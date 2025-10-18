@@ -1,0 +1,49 @@
+/* src/styles/datepicker.css */
+
+/* Import CSS gốc của thư viện */
+@import 'react-datepicker/dist/react-datepicker.css';
+
+/* Ghi đè để giao diện giống Tailwind hơn */
+.react-datepicker {
+    font-family: inherit !important; /* Dùng font của trang web */
+    border: 1px solid #e5e7eb !important; /* Màu border gray-200 */
+    border-radius: 0.75rem !important; /* bo góc lớn hơn */
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.react-datepicker__header {
+    background-color: #f9fafb !important; /* Màu bg-gray-50 */
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+    color: #111827 !important; /* Màu text-gray-900 */
+    font-weight: 600 !important;
+}
+
+.react-datepicker__day-name, 
+.react-datepicker__day, 
+.react-datepicker__time-name {
+    color: #374151 !important; /* Màu text-gray-700 */
+}
+
+.react-datepicker__day:hover {
+    background-color: #f3f4f6 !important; /* Màu bg-gray-100 */
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range {
+    background-color: #4f46e5 !important; /* Màu bg-indigo-600 */
+    color: white !important;
+}
+
+.react-datepicker__day--keyboard-selected {
+    background-color: #6366f1 !important; /* Màu bg-indigo-500 */
+}
+
+.react-datepicker__navigation-icon::before {
+    border-color: #6b7280 !important; /* Màu text-gray-500 */
+}
