@@ -1,23 +1,49 @@
-// client/components/Sidebar.jsx (SIDEBAR ĐÃ LÀM ĐẸP)
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast'; // Cần import để dùng trong nút logout
+import { useNavigate } from 'react-router-dom';
+// Đã sửa đường dẫn import AuthContext, giả định cấu trúc thư mục là components/ => ../../context
+import { useAuth } from '../context/AuthContext'; 
 
-const Sidebar = () => {
+// ICON MAP consistent with previous fixes
+const ICON_MAP = {
+    dashboard: '📊',
+    app: '📱',
+    tx: '💰',
+    chplay: '▶️',
+    users: '👥',
+};
+
+// Sidebar sử dụng React Router navigation
+const Sidebar = ({ currentPage }) => {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const isAdmin = user?.role === 'admin';
 
     const menuItems = [
-        { name: 'Tổng quan', href: '#', icon: 'fas fa-chart-line', current: true },
-        { name: 'Quản lý Ứng dụng', href: '#', icon: 'fas fa-mobile-alt', current: false, action: () => toast('Chuyển đến trang Quản lý Ứng dụng') },
-        { name: 'Quản lý Giao dịch', href: '#', icon: 'fas fa-exchange-alt', current: false, action: () => toast('Chuyển đến trang Quản lý Giao dịch') },
-        { name: 'Tài khoản CHPlay', href: '#', icon: 'fab fa-google-play', adminOnly: true, current: false, action: () => toast('Chuyển đến trang Tài khoản CHPlay') },
-        { name: 'Quản lý Người dùng', href: '#', icon: 'fas fa-users', adminOnly: true, current: false, action: () => toast('Chuyển đến trang Quản lý Người dùng') },
+        // Quản lý Ứng dụng (Applications) - Trang chủ Admin (Đổi tên thành Ứng dụng)
+        { name: 'Quản lý Ứng dụng', page: 'Applications', path: '/admin/applications', icon: ICON_MAP.app, adminOnly: true },
+        // Quản lý Giao dịch
+        { name: 'Quản lý Giao dịch', page: 'Transactions', path: '/admin/transactions', icon: ICON_MAP.tx, adminOnly: true },
+        // Tài khoản CHPlay
+        { name: 'Tài khoản CHPlay', page: 'ChplayAccounts', path: '/admin/chplay-accounts', icon: ICON_MAP.chplay, adminOnly: true },
+        // Quản lý Người dùng
+        { name: 'Quản lý Người dùng', page: 'UserManagement', path: '/admin/user-management', icon: ICON_MAP.users, adminOnly: true },
+    ];
+    
+    // Menu cho Client
+    const clientMenuItems = [
+        { name: 'Tổng quan Khách hàng', page: 'Dashboard', path: '/user/dashboard', icon: ICON_MAP.dashboard, adminOnly: false },
     ];
 
+    const finalMenuItems = isAdmin ? menuItems : clientMenuItems;
+
+    // Hàm xử lý navigation
+    const handleNavigation = (item) => {
+        navigate(item.path);
+    };
+
     return (
-        // Sidebar CỐ ĐỊNH, Shadow mềm, chiều rộng 64 (256px)
-        <aside className="w-64 bg-white shadow-2xl shadow-gray-200/50 fixed inset-y-0 left-0 flex flex-col z-20" >
+        // Sidebar CỐ ĐỊNH, Shadow mềm, chiều rộng 64 (256px), responsive
+        <aside className="w-64 bg-white shadow-2xl shadow-gray-200/50 fixed inset-y-0 left-0 flex flex-col z-20 hidden lg:flex md:flex" >
             
             {/* Header/Branding */}
             <div className="p-6 border-b border-indigo-100/50">
@@ -35,23 +61,24 @@ const Sidebar = () => {
 
             {/* Menu chính */}
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                {menuItems.map((item) => {
-                    if (item.adminOnly && !isAdmin) return null;
+                {finalMenuItems.map((item) => {
+                    // This check ensures only allowed items are rendered
+                    if (item.adminOnly && !isAdmin) return null; 
                     
                     return (
-                        <a
+                        <button
                             key={item.name}
-                            href={item.href}
-                            onClick={item.action}
-                            className={`flex items-center p-3 rounded-lg transition duration-150 transform hover:scale-[1.02] ${
-                                item.current 
+                            onClick={() => handleNavigation(item)}
+                            // Sử dụng button thay vì a để tránh refresh trang
+                            className={`flex items-center w-full p-3 rounded-lg transition duration-150 transform hover:scale-[1.02] ${
+                                currentPage === item.page
                                     ? 'bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-500/50' 
                                     : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-800'
                             }`}
                         >
-                            <i className={`${item.icon} w-5 mr-4 text-xl`}></i>
+                            <span className="w-5 mr-4 text-xl">{item.icon}</span>
                             <span className="text-base">{item.name}</span>
-                        </a>
+                        </button>
                     );
                 })}
             </nav>

@@ -17,7 +17,6 @@ import {
 import CreateAppModal from './CreateAppModal';
 import EditAppModal from './EditAppModal';
 import LoadingSpinner from '../components/Loading';
-import Sidebar from '../components/SideBar';
 import '../src/styles/datepicker.css'; // Import CSS cho Datepicker
 
 // --- HELPER FUNCTIONS (Không đổi) ---
@@ -27,30 +26,31 @@ const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', {
 
 const calculateSummary = (apps) => {
     const totalApp = apps.length;
-    let totalCostDevelopment = 0;
-    let totalCostTesting = 0;
-    let totalCostOther = 0;
+    let testingCount = 0;
+    let waitingForReviewCount = 0;
+    let approvedCount = 0;
     
     apps.forEach(app => {
-        totalCostDevelopment += (app.costDevelopment || 0);
-        totalCostTesting += (app.costTesting || 0);
-        totalCostOther += (app.costOther || 0);
+        switch (app.status) {
+            case 'testing':
+                testingCount++;
+                break;
+            case 'waiting_for_review':
+                waitingForReviewCount++;
+                break;
+            case 'approved':
+                approvedCount++;
+                break;
+            default:
+                break;
+        }
     });
-    
-    const totalCost = totalCostDevelopment + totalCostTesting + totalCostOther;
-    
-    // Giả sử thu nhập = tổng chi phí * 1.2 (20% lợi nhuận)
-    const totalRevenue = totalCost * 1.2;
-    const balance = totalRevenue - totalCost;
     
     return { 
         totalApp, 
-        totalCostDevelopment, 
-        totalCostTesting, 
-        totalCostOther,
-        totalCost,
-        totalRevenue, 
-        balance 
+        testingCount,
+        waitingForReviewCount,
+        approvedCount
     };
 };
 
@@ -275,14 +275,10 @@ const AdminDashboard = () => {
         return <LoadingSpinner message="Đang tải dữ liệu quản lý..." />;
     }
 
-    const balanceIsPositive = summary.balance >= 0;
-
     return (
-        <div className="flex bg-gray-50 min-h-screen font-sans">
-            <Sidebar />
-            <div className="flex-1 lg:ml-64">
-                <main className="p-4 sm:p-6 lg:p-8 max-w-full">
-                    <header className="mb-8">
+        <>
+            <main className="p-4 sm:p-6 lg:p-8 max-w-full">
+                <header className="mb-8">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-900">Tổng Quan</h1>
@@ -303,9 +299,9 @@ const AdminDashboard = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <StatCard title="Tổng Ứng dụng" value={total} icon={faMobileAlt} color={{bg: 'bg-blue-100', text: 'text-blue-600'}} />
-                        <StatCard title="Tổng Chi phí" value={formatCurrency(summary.totalCost)} icon={faCode} color={{bg: 'bg-red-100', text: 'text-red-600'}} />
-                        <StatCard title="Tổng Thu Nhập" value={formatCurrency(summary.totalRevenue)} icon={faDollarSign} color={{bg: 'bg-green-100', text: 'text-green-600'}} />
-                        <StatCard title="Lợi Nhuận Ròng" value={formatCurrency(summary.balance)} icon={balanceIsPositive ? faArrowTrendUp : faArrowTrendDown} color={balanceIsPositive ? {bg: 'bg-teal-100', text: 'text-teal-600'} : {bg: 'bg-orange-100', text: 'text-orange-600'}} />
+                        <StatCard title="Đang Thử Nghiệm" value={summary.testingCount} icon={faCode} color={{bg: 'bg-yellow-100', text: 'text-yellow-600'}} />
+                        <StatCard title="Chờ Duyệt" value={summary.waitingForReviewCount} icon={faDollarSign} color={{bg: 'bg-orange-100', text: 'text-orange-600'}} />
+                        <StatCard title="Đã Duyệt" value={summary.approvedCount} icon={faArrowTrendUp} color={{bg: 'bg-green-100', text: 'text-green-600'}} />
                     </div>
                     
                     <DashboardToolbar 
@@ -321,7 +317,6 @@ const AdminDashboard = () => {
                     
                     {totalPages > 1 && <Pagination page={page} totalPages={totalPages} setPage={setPage} />}
                 </main>
-            </div>
 
             <CreateAppModal isOpen={isCreateAppModalOpen} onClose={() => setIsCreateAppModalOpen(false)} onAppCreated={fetchData} />
             
@@ -334,7 +329,7 @@ const AdminDashboard = () => {
                 onAppUpdated={handleAppUpdated}
                 appId={editingAppId}
             />
-        </div>
+        </>
     );
 };
 

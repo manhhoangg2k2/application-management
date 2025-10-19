@@ -19,6 +19,7 @@ const authRoutes = require('./routes/auth');
 const applicationRoutes = require('./routes/applications'); 
 const chplayAccountRoutes = require('./routes/chplayAccount');   
 const userRoutes = require('./routes/user');
+const transactionRoutes = require('./routes/transactions');
 // Khi có thêm routes, bạn sẽ khai báo ở đây
 
 // --- Middleware Cần Thiết ---
@@ -39,7 +40,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/chplay-accounts', chplayAccountRoutes);
 app.use('/api/users', userRoutes);
 
-// *Các routes mới (CHPlay, Transactions, Users) sẽ được thêm vào đây* 
+app.use('/api/transactions', transactionRoutes);
 
 
 // Route kiểm tra trạng thái sức khỏe của server

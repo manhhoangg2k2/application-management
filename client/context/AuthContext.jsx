@@ -13,22 +13,30 @@ export const useAuth = () => {
 };
 
 const AuthProvider = ({ children }) => {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8400/api';
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true); 
   const [tokens, setTokens] = useState({ accessToken: null, refreshToken: null });
 
+  // Debug log
+  console.log('AuthProvider initialized with API_URL:', API_URL);
+
   // 1. Duy trì phiên (Chạy khi mount)
   useEffect(() => {
+    console.log('AuthProvider useEffect running...');
     const storedTokens = localStorage.getItem('authTokens');
     const storedUser = localStorage.getItem('authUser');
+
+    console.log('Stored tokens:', storedTokens ? 'exists' : 'null');
+    console.log('Stored user:', storedUser ? 'exists' : 'null');
 
     if (storedTokens && storedUser) {
         try {
             const parsedTokens = JSON.parse(storedTokens);
             const parsedUser = JSON.parse(storedUser);
             
+            console.log('Parsed user:', parsedUser);
             setTokens(parsedTokens);
             setUser(parsedUser);
             setIsAuthenticated(true);
@@ -38,6 +46,7 @@ const AuthProvider = ({ children }) => {
         }
     }
     
+    console.log('Setting isLoading to false');
     setIsLoading(false);
   }, []);
 
@@ -51,6 +60,10 @@ const AuthProvider = ({ children }) => {
     
     // THÔNG BÁO TOAST
     toast.success(`Chào mừng ${userData.name || userData.username}! Đăng nhập thành công.`);
+    
+    // Redirect dựa trên role
+    const redirectPath = userData.role === 'admin' ? '/admin' : '/user';
+    window.location.href = redirectPath;
     
   }, []);
 
