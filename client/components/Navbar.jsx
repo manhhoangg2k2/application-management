@@ -17,7 +17,8 @@ const Navbar = () => {
     ];
 
     const clientMenuItems = [
-        { name: 'Tổng quan Khách hàng', page: 'Dashboard', path: '/user/dashboard', adminOnly: false },
+        { name: 'Quản lý Ứng dụng', page: 'UserApplications', path: '/user/applications', adminOnly: false },
+        { name: 'Quản lý Giao dịch', page: 'UserTransactions', path: '/user/transactions', adminOnly: false },
     ];
 
     const finalMenuItems = isAdmin ? menuItems : clientMenuItems;
@@ -25,12 +26,12 @@ const Navbar = () => {
     // Lấy currentPage từ URL path
     const getCurrentPageFromPath = () => {
         const path = location.pathname;
-        if (path.includes('/applications')) return 'Applications';
-        if (path.includes('/transactions')) return 'Transactions';
+        if (path.includes('/applications')) return isAdmin ? 'Applications' : 'UserApplications';
+        if (path.includes('/transactions')) return isAdmin ? 'Transactions' : 'UserTransactions';
         if (path.includes('/chplay-accounts')) return 'ChplayAccounts';
         if (path.includes('/user-management')) return 'UserManagement';
         if (path.includes('/dashboard')) return 'Dashboard';
-        return 'Applications'; // default
+        return isAdmin ? 'Applications' : 'UserApplications'; // default
     };
 
     const currentPage = getCurrentPageFromPath();

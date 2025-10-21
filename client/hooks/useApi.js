@@ -31,8 +31,8 @@ export const useApi = () => {
         const config = {
             ...options,
             headers,
-            // Đảm bảo không gửi body nếu là GET
-            body: options.body ? JSON.stringify(options.body) : undefined,
+            // Không stringify body ở đây vì có thể đã được stringify rồi
+            body: options.body,
         };
 
         // 2. Thực hiện Fetch (Không thêm /auth/ vào endpoint vì đây là API chung)
@@ -62,7 +62,8 @@ export const useApi = () => {
                             headers: {
                                 ...config.headers,
                                 'Authorization': `Bearer ${accessToken}`,
-                            }
+                            },
+                            body: config.body // Giữ nguyên body đã stringify
                         };
                         
                         const retryResponse = await fetch(url, retryConfig);

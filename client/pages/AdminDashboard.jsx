@@ -19,10 +19,7 @@ import EditAppModal from './EditAppModal';
 import LoadingSpinner from '../components/Loading';
 import '../src/styles/datepicker.css'; // Import CSS cho Datepicker
 
-// --- HELPER FUNCTIONS (Không đổi) ---
-const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', minimumFractionDigits: 0
-}).format(amount || 0);
+import { formatCurrency } from '../utils/currency';
 
 const calculateSummary = (apps) => {
     const totalApp = apps.length;

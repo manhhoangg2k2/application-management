@@ -38,9 +38,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationRoutes);
 
 app.use('/api/chplay-accounts', chplayAccountRoutes);
+
 app.use('/api/users', userRoutes);
 
 app.use('/api/transactions', transactionRoutes);
+
+// *Các routes mới sẽ được thêm vào đây* 
 
 
 // Route kiểm tra trạng thái sức khỏe của server

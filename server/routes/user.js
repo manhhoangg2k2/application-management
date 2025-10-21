@@ -1,27 +1,38 @@
-// server/routes/users.js
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
-const userController = require('../controllers/userController');
+const {
+    getUserApplications,
+    getUserApplication,
+    getUserTransactions,
+    createUserTransaction,
+    getUserTransactionStatistics,
+    getUserProfile,
+    updateUserProfile
+} = require('../controllers/userController');
 
-// Route lấy thông tin cá nhân (Admin và Client đều dùng)
-router.get('/me', protect, userController.getMe);
+// Middleware: Chỉ cho phép User truy cập
+const userOnly = authorize('user');
 
-// Route quản lý người dùng (Chỉ Admin)
-router.route('/')
-    // GET /api/users: Lấy danh sách tất cả người dùng với phân trang và tìm kiếm
-    .get(protect, authorize('admin'), userController.getUsers)
-    // POST /api/users: Admin tạo người dùng Client
-    .post(protect, authorize('admin'), userController.createUser);
+// ==================== USER PROFILE ====================
+router.route('/profile')
+    .get(protect, userOnly, getUserProfile)
+    .put(protect, userOnly, updateUserProfile);
 
-// Route quản lý người dùng theo ID (Chỉ Admin)
-router.route('/:id')
-    // GET /api/users/:id: Lấy thông tin user theo ID
-    .get(protect, authorize('admin'), userController.getUserById)
-    // PUT /api/users/:id: Cập nhật thông tin user
-    .put(protect, authorize('admin'), userController.updateUser)
-    // DELETE /api/users/:id: Xóa user
-    .delete(protect, authorize('admin'), userController.deleteUser);
+// ==================== USER APPLICATIONS ====================
+router.route('/applications')
+    .get(protect, userOnly, getUserApplications);
+
+router.route('/applications/:id')
+    .get(protect, userOnly, getUserApplication);
+
+// ==================== USER TRANSACTIONS ====================
+router.route('/transactions')
+    .get(protect, userOnly, getUserTransactions)
+    .post(protect, userOnly, createUserTransaction);
+
+router.route('/transactions/statistics')
+    .get(protect, userOnly, getUserTransactionStatistics);
 
 module.exports = router;

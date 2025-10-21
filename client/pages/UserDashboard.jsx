@@ -7,10 +7,7 @@ import CreateAppModal from './CreateAppModal'; // <<<< IMPORT MODAL MỚI >>>>
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
 
-// Hàm helper định dạng (tái sử dụng)
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
+import { formatCurrency } from '../utils/currency';
 
 // Hàm tính toán số liệu tổng hợp (tái sử dụng)
 const calculateSummary = (apps) => {
@@ -165,9 +162,6 @@ const SummaryCard = ({ title, value, unit, color, icon }) => (
 );
 
 const ApplicationTable = ({ applications, isAdmin }) => {
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-    };
 
     // Component hiển thị IAP IDs với khả năng copy
     const IapIdsDisplay = ({ iapIds }) => {

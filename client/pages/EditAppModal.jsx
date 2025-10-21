@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
+import { formatCurrency, parseCurrency, formatNumber } from '../utils/currency';
 
 /**
  * Component Modal để sửa Ứng dụng (Chỉ Admin).
@@ -362,19 +363,6 @@ const InputField = ({ label, name, value, onChange, placeholder, required, disab
 
 // --- Component Phụ: Currency Field ---
 const CurrencyField = ({ label, name, value, onChange, placeholder, required, disabled }) => {
-    // Hàm format số tiền thành chuỗi có dấu phẩy
-    const formatCurrency = (amount) => {
-        if (!amount || amount === 0) return '';
-        return new Intl.NumberFormat('vi-VN').format(amount);
-    };
-
-    // Hàm parse chuỗi tiền tệ thành số
-    const parseCurrency = (formattedValue) => {
-        if (!formattedValue) return 0;
-        // Loại bỏ tất cả ký tự không phải số
-        const numericValue = formattedValue.replace(/[^\d]/g, '');
-        return parseInt(numericValue) || 0;
-    };
 
     // Xử lý khi người dùng nhập
     const handleInputChange = (e) => {
@@ -401,7 +389,7 @@ const CurrencyField = ({ label, name, value, onChange, placeholder, required, di
                     name={name}
                     type="text"
                     required={required}
-                    value={formatCurrency(value)}
+                    value={formatNumber(value)}
                     onChange={handleInputChange}
                     placeholder={placeholder || "0"}
                     disabled={disabled}

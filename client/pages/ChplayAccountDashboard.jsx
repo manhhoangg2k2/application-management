@@ -21,9 +21,7 @@ import LoadingSpinner from '../components/Loading'; // Tái sử dụng
 // CÁC COMPONENT & HELPER CHIA SẺ (ĐỊNH NGHĨA LẠI CHO TÍNH TỰ CHỦ)
 // =================================================================
 
-const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', minimumFractionDigits: 0
-}).format(amount || 0);
+import { formatCurrency } from '../utils/currency';
 
 const calculateAccountSummary = (accounts) => {
     const totalAccounts = accounts.length;

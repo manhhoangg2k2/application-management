@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 
 // Import các trang cho user
 import UserDashboard from './UserDashboard';
+import UserApplications from './UserApplications';
+import UserTransactions from './UserTransactions';
 
 // UserRouter sử dụng React Router để quản lý routing cho user
 const UserRouter = () => {
@@ -20,8 +22,10 @@ const UserRouter = () => {
     // Lấy currentPage từ URL path
     const getCurrentPageFromPath = () => {
         const path = location.pathname;
+        if (path.includes('/applications')) return 'UserApplications';
+        if (path.includes('/transactions')) return 'UserTransactions';
         if (path.includes('/dashboard')) return 'Dashboard';
-        return 'Dashboard'; // default
+        return 'UserApplications'; // default
     };
 
     const currentPage = getCurrentPageFromPath();
@@ -29,7 +33,9 @@ const UserRouter = () => {
     return (
         <LayoutWithNavbar>
             <Routes>
-                <Route path="/" element={<Navigate to="/user/dashboard" replace />} />
+                <Route path="/" element={<Navigate to="/user/applications" replace />} />
+                <Route path="/applications" element={<UserApplications />} />
+                <Route path="/transactions" element={<UserTransactions />} />
                 <Route path="/dashboard" element={<UserDashboard />} />
                 <Route path="*" element={
                     <div className="text-center p-12 bg-white rounded-xl shadow-lg">
