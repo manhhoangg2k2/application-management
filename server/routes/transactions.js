@@ -25,7 +25,7 @@ router.route('/statistics')
     
 router.route('/:id')
     .get(protect, getTransaction) // Chi tiết giao dịch (có kiểm tra quyền trong controller)
-    .put(protect, authorize('admin'), updateTransaction) // Sửa
-    .delete(protect, authorize('admin'), deleteTransaction); // Xóa
+    .put(protect, updateTransaction) // Sửa (có kiểm tra quyền trong controller)
+    .delete(protect, authorize('admin'), deleteTransaction); // Xóa (chỉ Admin)
 
 module.exports = router;

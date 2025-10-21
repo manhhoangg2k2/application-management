@@ -9,13 +9,50 @@ const User = require('../models/User');
  */
 exports.getUserApplications = async (req, res) => {
     try {
-        const applications = await Application.find({ client: req.user.id })
+        // Build filter based on query params
+        const filter = { client: req.user.id };
+
+        // Search by name or appId (case-insensitive)
+        if (req.query.search) {
+            // sanitize search input for regex
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const q = escapeRegExp(req.query.search.trim());
+            const regex = new RegExp(q, 'i');
+            filter.$or = [ { name: regex }, { appId: regex } ];
+        }
+
+        // Status filter
+        if (req.query.status && req.query.status !== 'all') {
+            filter.status = req.query.status;
+        }
+
+        // Date range filter on createdAt
+        if (req.query.fromDate || req.query.toDate) {
+            filter.createdAt = {};
+            if (req.query.fromDate) filter.createdAt.$gte = new Date(req.query.fromDate);
+            if (req.query.toDate) filter.createdAt.$lte = new Date(req.query.toDate);
+        }
+
+        // Pagination
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get total count for pagination
+        const total = await Application.countDocuments(filter);
+
+        // Query with pagination
+        const applications = await Application.find(filter)
             .populate('chplayAccount', 'email status')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
 
         res.status(200).json({
             success: true,
-            count: applications.length,
+            count: total,
+            page: page,
+            totalPages: Math.ceil(total / limit) || 1,
             data: applications
         });
     } catch (error) {
@@ -314,5 +351,83 @@ exports.updateUserProfile = async (req, res) => {
             success: false,
             message: 'Lỗi máy chủ nội bộ.'
         });
+    }
+};
+
+/**
+ * @desc    Admin: Lấy danh sách tất cả users (clients)
+ * @route   GET /api/users/all
+ * @access  Private/Admin
+ */
+exports.getAllUsers = async (req, res) => {
+    try {
+        // Chỉ lấy users có role 'user' (không lấy admin)
+        const users = await User.find({ role: 'user' })
+            .select('-password')
+            .sort({ name: 1 });
+
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            data: users
+        });
+    } catch (error) {
+        console.error('Lỗi khi lấy danh sách users:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi máy chủ nội bộ.'
+        });
+    }
+};
+
+exports.getUsers = async (req, res) => {
+    try {
+        let filter = {};
+        let query = User.find();
+
+        // Apply filters
+        if (Object.keys(filter).length > 0) {
+            query = query.where(filter);
+        }
+
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Role filter
+        if (req.query.role && req.query.role !== 'all') {
+            query = query.where('role').equals(req.query.role);
+        }
+
+        // Date filters
+        if (req.query.fromDate) {
+            query = query.where('createdAt').gte(new Date(req.query.fromDate));
+        }
+        if (req.query.toDate) {
+            query = query.where('createdAt').lte(new Date(req.query.toDate));
+        }
+
+        // Execute query with pagination
+        const users = await query
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        // Get total count for pagination
+        const total = await User.countDocuments(filter);
+
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            total: total,
+            page: page,
+            totalPages: Math.ceil(total / limit),
+            data: users
+        });
+    } catch (error) {
+        console.error('Lỗi khi lấy danh sách users:', error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
     }
 };

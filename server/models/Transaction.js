@@ -13,11 +13,11 @@ const TransactionSchema = new mongoose.Schema({
         ref: 'Application',
         default: null, // Cho phép null nếu giao dịch không liên quan trực tiếp đến App
     },
-    // Loại giao dịch từ góc nhìn Admin: revenue (thu) hoặc expense (chi)
+    // Loại giao dịch: income (thu) hoặc expense (chi)
     type: {
         type: String,
-        enum: ['revenue', 'expense'],
-        required: [true, 'Vui lòng xác định loại giao dịch (revenue/expense).'],
+        enum: ['income', 'expense'],
+        required: [true, 'Vui lòng xác định loại giao dịch (income/expense).'],
     },
     // Danh mục giao dịch
     category: {

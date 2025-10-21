@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
 import toast from 'react-hot-toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCopy, faCheck, faEye, faSyncAlt, faFilter, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { formatCurrency } from '../utils/currency';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import AppDetailModal from '../components/AppDetailModal';
 
 const UserApplications = () => {
     const { user } = useAuth();
@@ -24,21 +27,63 @@ const UserApplications = () => {
     const [toDate, setToDate] = useState('');
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [chplayCache, setChplayCache] = useState({});
+    const chplayCacheRef = useRef(chplayCache);
 
-    const fetchApplications = useCallback(async () => {
+    // fetchApplications accepts an options object so callers can control when filters are applied.
+    const fetchApplications = useCallback(async (opts = {}) => {
+        const p = opts.page ?? page;
+        const l = opts.limit ?? limit;
+        const search = opts.search ?? '';
+        const status = opts.status ?? 'all';
+        const from = opts.fromDate ?? fromDate;
+        const to = opts.toDate ?? toDate;
+
         setIsLoading(true);
         try {
             const params = new URLSearchParams();
-            params.set('page', String(page));
-            params.set('limit', String(limit));
-            if (fromDate) params.set('fromDate', fromDate);
-            if (toDate) params.set('toDate', toDate);
+            params.set('page', String(p));
+            params.set('limit', String(l));
+            if (search) params.set('search', search);
+            if (status && status !== 'all') params.set('status', status);
+            if (from) params.set('fromDate', from);
+            if (to) params.set('toDate', to);
 
             const result = await authFetch(`users/applications?${params.toString()}`, { method: 'GET' });
             if (result && result.success) {
                 setApplications(result.data || []);
                 setTotal(result.count || 0);
-                setTotalPages(Math.ceil((result.count || 0) / limit));
+                setTotalPages(Math.ceil((result.count || 0) / l));
+                // Preload chplayAccount details for entries that only include an id
+                const idsToFetch = new Set();
+                (result.data || []).forEach(app => {
+                    const acc = app.chplayAccount;
+                    const id = acc && (typeof acc === 'string' ? acc : acc._id);
+                    const hasName = acc && (typeof acc !== 'string') && acc.name;
+                    if (id && !hasName && !chplayCacheRef.current[id]) {
+                        idsToFetch.add(id);
+                    }
+                });
+                if (idsToFetch.size > 0) {
+                    // fetch in parallel
+                    Promise.all(Array.from(idsToFetch).map(id =>
+                        authFetch(`chplay-accounts/${id}`, { method: 'GET' })
+                            .then(r => r && r.success ? { id, data: r.data } : null)
+                            .catch(() => null)
+                    )).then(results => {
+                        const update = {};
+                        results.forEach(item => {
+                            if (item && item.data) update[item.id] = item.data;
+                        });
+                        if (Object.keys(update).length > 0) {
+                            setChplayCache(prev => {
+                                const next = { ...prev, ...update };
+                                chplayCacheRef.current = next;
+                                return next;
+                            });
+                        }
+                    });
+                }
             }
         } catch (error) {
             toast.error(error.message || 'Không thể tải danh sách ứng dụng.');
@@ -48,6 +93,7 @@ const UserApplications = () => {
     }, [authFetch, page, limit, fromDate, toDate]);
 
     useEffect(() => {
+        // Initial load with current page/limit (no search/status applied until user applies filter)
         fetchApplications();
     }, [fetchApplications]);
 
@@ -63,13 +109,17 @@ const UserApplications = () => {
 
     const handleApplyFilter = () => {
         setPage(1);
-        fetchApplications();
+        // Reset to first page and fetch with current filters
+        fetchApplications({ 
+            page: 1, 
+            limit,
+            search: searchQuery,
+            status: statusFilter,
+            fromDate,
+            toDate
+        });
     };
 
-    const filteredApplications = applications.filter((app) => 
-        `${app.name || ''} ${app.appId || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        (statusFilter === 'all' ? true : app.status === statusFilter)
-    );
 
     if (isLoading) {
         return (
@@ -92,7 +142,7 @@ const UserApplications = () => {
                         </div>
                         <div className="flex items-center gap-3">
                             <button 
-                                onClick={fetchApplications}
+                                onClick={() => fetchApplications({ page, limit, search: searchQuery, status: statusFilter, fromDate, toDate })}
                                 className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border hover:bg-gray-50 transition shadow-sm"
                             >
                                 <FontAwesomeIcon icon={faSyncAlt} className="mr-2" />
@@ -121,11 +171,11 @@ const UserApplications = () => {
                 <div className="bg-white shadow rounded-lg overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h2 className="text-lg font-semibold text-gray-900">
-                            Danh sách ứng dụng ({applications.length})
+                            Danh sách ứng dụng (Tổng: {total})
                         </h2>
                     </div>
 
-                    {filteredApplications.length === 0 ? (
+                    {applications.length === 0 ? (
                         <div className="p-12 text-center">
                             <div className="text-gray-400 text-6xl mb-4">📱</div>
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -136,65 +186,68 @@ const UserApplications = () => {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="w-full overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="min-w-[200px] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Tên App
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            App ID
+                                        <th className="min-w-[120px] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ngày up
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="min-w-[120px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Trạng thái
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="min-w-[150px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             IAP IDs
                                         </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Chi phí PT
+                                        <th className="min-w-[100px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Dev
                                         </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Chi phí TT
-                                        </th>
-                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="min-w-[120px] px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Thao tác
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredApplications.map((app) => (
-                                        <tr key={app._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">{app.name}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{app.appId}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <StatusBadge status={app.status} />
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <IapIdsDisplay iapIds={app.iapIds} />
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                                                {formatCurrency(app.costDevelopment)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                                                {formatCurrency(app.costTesting)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <button
-                                                    onClick={() => handleViewDetail(app)}
-                                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                                                >
-                                                    <FontAwesomeIcon icon={faEye} className="mr-1" />
-                                                    Xem chi tiết
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {applications.map((app) => {
+                                        const acc = app.chplayAccount;
+                                        const chplayId = acc && (typeof acc === 'string' ? acc : acc._id);
+                                        const chplayData = chplayId ? chplayCache[chplayId] : (typeof acc === 'object' ? acc : null);
+                                        return (
+                                            <tr key={app._id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm font-medium text-gray-900">{app.name}</div>
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-900">{app.dateUploaded ? new Date(app.dateUploaded).toLocaleDateString('vi-VN') : (app.createdAt ? new Date(app.createdAt).toLocaleDateString('vi-VN') : 'N/A')}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <StatusBadge status={app.status} />
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <IapIdsDisplay iapIds={app.iapIds} />
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <AccountTooltip account={chplayData || (chplayId ? { _id: chplayId } : null)}>
+                                                        <span className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                                            {chplayData?.name || chplayData?._id || chplayId || 'N/A'}
+                                                        </span>
+                                                    </AccountTooltip>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <button
+                                                        onClick={() => handleViewDetail(app)}
+                                                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                                                    >
+                                                        <FontAwesomeIcon icon={faEye} className="mr-1" />
+                                                        Xem chi tiết
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -213,7 +266,7 @@ const UserApplications = () => {
 
             {/* Detail Modal */}
             {showDetailModal && selectedApp && (
-                <AppDetailModal app={selectedApp} onClose={closeDetailModal} />
+                <AppDetailModal app={selectedApp} isOpen={showDetailModal} onClose={closeDetailModal} />
             )}
         </div>
     );
@@ -285,116 +338,75 @@ const StatusBadge = ({ status }) => {
         finished: "bg-teal-100 text-teal-800",
         default: "bg-gray-100 text-gray-800"
     };
+    const label = status ? status.replace(/_/g, ' ').toUpperCase() : 'N/A';
     return (
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status] || statusStyles.default}`}>
-            {status?.toUpperCase().replace('_', ' ') || 'N/A'}
+            {label}
         </span>
     );
 };
 
-// Modal chi tiết ứng dụng
-const AppDetailModal = ({ app, onClose }) => {
+// Tooltip component for CHPlay Account (used in table)
+const AccountTooltip = ({ account, children }) => {
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+    const handleMouseMove = (e) => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+
+    if (!account) {
+        return <span className="text-gray-400">N/A</span>;
+    }
+
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-                <div className="mt-3">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-gray-900">Chi tiết ứng dụng</h3>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Tên ứng dụng</label>
-                                <p className="mt-1 text-sm text-gray-900">{app.name}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">App ID</label>
-                                <p className="mt-1 text-sm text-gray-900">{app.appId}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
-                                <div className="mt-1">
-                                    <StatusBadge status={app.status} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Ngày tạo</label>
-                                <p className="mt-1 text-sm text-gray-900">
-                                    {new Date(app.createdAt).toLocaleDateString('vi-VN')}
-                                </p>
-                            </div>
-                        </div>
-
+        <div className="relative inline-block">
+            <div
+                onMouseEnter={(e) => {
+                    setMousePosition({ x: e.clientX, y: e.clientY });
+                    setShowTooltip(true);
+                }}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={() => setShowTooltip(false)}
+                className="cursor-pointer"
+            >
+                {children}
+            </div>
+            {showTooltip && (
+                <div
+                    className="fixed z-50 w-64 p-3 bg-blue-900 text-white text-sm rounded-lg shadow-xl pointer-events-none"
+                    style={{
+                        left: `${mousePosition.x + 10}px`,
+                        top: `${mousePosition.y - 10}px`,
+                        transform: 'translateY(-100%)'
+                    }}
+                >
+                    <div className="space-y-2">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Mô tả</label>
-                            <p className="mt-1 text-sm text-gray-900">{app.description || 'Không có mô tả'}</p>
+                            <span className="font-semibold text-blue-300">Tên:</span>
+                            <span className="ml-2">{account.name || 'N/A'}</span>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Chi phí phát triển</label>
-                                <p className="mt-1 text-sm text-gray-900">{formatCurrency(app.costDevelopment)}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Chi phí testing</label>
-                                <p className="mt-1 text-sm text-gray-900">{formatCurrency(app.costTesting)}</p>
-                            </div>
-                        </div>
-
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">IAP IDs</label>
-                            <div className="mt-1">
-                                {app.iapIds && app.iapIds.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {app.iapIds.map((iapId, index) => (
-                                            <div key={index} className="flex items-center gap-2">
-                                                <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded text-gray-700">
-                                                    {iapId}
-                                                </span>
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(iapId);
-                                                        toast.success('Đã copy IAP ID!');
-                                                    }}
-                                                    className="text-gray-400 hover:text-indigo-600 transition-colors"
-                                                >
-                                                    <FontAwesomeIcon icon={faCopy} className="text-xs" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-gray-500">Chưa có IAP ID</p>
-                                )}
-                            </div>
+                            <span className="font-semibold text-blue-300">Username:</span>
+                            <span className="ml-2 font-mono">{account.username || 'N/A'}</span>
                         </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="mt-6 flex justify-end">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                        >
-                            Đóng
-                        </button>
+                        <div>
+                            <span className="font-semibold text-blue-300">Trạng thái:</span>
+                            <span className="ml-2 capitalize">{account.status || 'N/A'}</span>
+                        </div>
+                        {account.email && (
+                            <div>
+                                <span className="font-semibold text-blue-300">Email:</span>
+                                <span className="ml-2">{account.email}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
+
 
 // Filter Section Component
 const FilterSection = ({ 
@@ -414,7 +426,7 @@ const FilterSection = ({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Tên app, App ID..."
+                        placeholder="Tên app..."
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                     />
                 </div>
@@ -436,20 +448,24 @@ const FilterSection = ({
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
-                    <input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
+                    <DatePicker
+                        selected={fromDate ? new Date(fromDate) : null}
+                        onChange={(date) => setFromDate(date ? date.toISOString() : null)}
+                        dateFormat="dd/MM/yyyy"
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                        placeholderText="Chọn ngày bắt đầu"
+                        isClearable
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
-                    <input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
+                    <DatePicker
+                        selected={toDate ? new Date(toDate) : null}
+                        onChange={(date) => setToDate(date ? date.toISOString() : null)}
+                        dateFormat="dd/MM/yyyy"
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                        placeholderText="Chọn ngày kết thúc"
+                        isClearable
                     />
                 </div>
                 <div className="flex items-end gap-2">
@@ -464,7 +480,7 @@ const FilterSection = ({
                         <option value={50}>50 / trang</option>
                     </select>
                     <button 
-                        onClick={onApplyFilter} 
+                        onClick={onApplyFilter}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm"
                         title="Áp dụng bộ lọc"
                     >

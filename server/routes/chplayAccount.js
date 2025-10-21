@@ -11,6 +11,7 @@ router.route('/')
     .post(protect, authorize('admin'), chplayController.createCHPlayAccount);
 
 router.route('/:id')
+    .get(protect, chplayController.getCHPlayAccount)
     .put(protect, authorize('admin'), chplayController.updateCHPlayAccount)
     .delete(protect, authorize('admin'), chplayController.deleteCHPlayAccount);
 

@@ -9,11 +9,24 @@ const {
     createUserTransaction,
     getUserTransactionStatistics,
     getUserProfile,
-    updateUserProfile
+    updateUserProfile,
+    getAllUsers,
+    getUsers
 } = require('../controllers/userController');
 
 // Middleware: Chỉ cho phép User truy cập
 const userOnly = authorize('user');
+// Middleware: Chỉ cho phép Admin truy cập
+const adminOnly = authorize('admin');
+
+// ==================== ADMIN ROUTES ====================
+// Route cho Admin lấy danh sách tất cả users với pagination và filter
+router.route('/')
+    .get(protect, adminOnly, getUsers);
+
+// Route cho Admin lấy danh sách tất cả users (simple)
+router.route('/all')
+    .get(protect, adminOnly, getAllUsers);
 
 // ==================== USER PROFILE ====================
 router.route('/profile')

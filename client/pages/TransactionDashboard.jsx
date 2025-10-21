@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
 import toast from 'react-hot-toast';
 
-// --- THƯ VIỆN BÊN THỨ 3 (Sử dụng icon và input native để tránh lỗi build) ---
-// Đã loại bỏ import cho FontAwesome và DatePicker.
+// --- THƯ VIỆN BÊN THỨ 3 ---
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 // --- COMPONENTS & STYLES (Placeholder Imports) ---
 import LoadingSpinner from '../components/Loading'; // Tái sử dụng
@@ -34,8 +35,8 @@ const ICON_MAP = {
 
 import { formatCurrency } from '../utils/currency';
 
-const calculateTransactionSummary = (transactions) => {
-    const totalTx = transactions.length;
+const calculateTransactionSummary = (transactions, totalCount = 0) => {
+    const totalTx = totalCount; // Sử dụng tổng số từ API thay vì length của array
     let totalInflow = 0;
     let totalOutflow = 0;
     
@@ -65,6 +66,9 @@ const StatCard = ({ title, value, iconKey, color }) => (
 );
 
 const DashboardToolbar = ({ searchQuery, setSearchQuery, typeFilter, setTypeFilter, fromDate, setFromDate, toDate, setToDate, limit, setLimit, onApplyFilter }) => {
+    // Convert string dates to Date objects for DatePicker
+    const startDate = fromDate ? new Date(fromDate) : null;
+    const endDate = toDate ? new Date(toDate) : null;
     
     return (
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
@@ -88,19 +92,28 @@ const DashboardToolbar = ({ searchQuery, setSearchQuery, typeFilter, setTypeFilt
                     <option value="expense">Chi ra</option>
                 </select>
                 <div className="flex items-center gap-2">
-                    <input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        placeholder="Từ ngày"
+                    <DatePicker
+                        selected={startDate}
+                        onChange={(date) => setFromDate(date ? date.toISOString().split('T')[0] : '')}
+                        selectsStart
+                        startDate={startDate}
+                        endDate={endDate}
+                        maxDate={new Date()}
+                        isClearable
+                        placeholderText="Từ ngày"
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                     />
                     <span className="text-gray-400">-</span>
-                    <input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        placeholder="Đến ngày"
+                    <DatePicker
+                        selected={endDate}
+                        onChange={(date) => setToDate(date ? date.toISOString().split('T')[0] : '')}
+                        selectsEnd
+                        startDate={startDate}
+                        endDate={endDate}
+                        minDate={startDate}
+                        maxDate={new Date()}
+                        isClearable
+                        placeholderText="Đến ngày"
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                     />
                 </div>
@@ -256,15 +269,254 @@ const CreateTransactionModal = ({ isOpen, onClose, onTxCreated }) => {
 };
 
 const EditTransactionModal = ({ isOpen, onClose, onTxUpdated, txId }) => {
+    const { user } = useAuth();
+    const authFetch = useApi();
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const [transaction, setTransaction] = useState(null);
+    const [formData, setFormData] = useState({
+        type: 'revenue',
+        category: '',
+        amount: '',
+        description: '',
+        transactionDate: '',
+        status: 'completed',
+        notes: ''
+    });
+
+    // Fetch transaction details when modal opens
+    useEffect(() => {
+        if (isOpen && txId) {
+            fetchTransactionDetails();
+        }
+    }, [isOpen, txId]);
+
+    const fetchTransactionDetails = async () => {
+        try {
+            setIsLoading(true);
+            const result = await authFetch(`transactions/${txId}`, { method: 'GET' });
+            if (result && result.success) {
+                const tx = result.data;
+                setTransaction(tx);
+                setFormData({
+                    type: tx.type,
+                    category: tx.category,
+                    amount: tx.amount.toString(),
+                    description: tx.description,
+                    transactionDate: tx.transactionDate ? new Date(tx.transactionDate).toISOString().split('T')[0] : '',
+                    status: tx.status,
+                    notes: tx.notes || ''
+                });
+            } else {
+                throw new Error(result?.message || 'Không thể tải thông tin giao dịch.');
+            }
+        } catch (error) {
+            toast.error('Lỗi khi tải thông tin giao dịch: ' + error.message);
+            onClose();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!formData.amount || !formData.description) {
+            toast.error('Vui lòng điền đầy đủ thông tin bắt buộc.');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const updateData = {
+                ...formData,
+                amount: parseFloat(formData.amount),
+                transactionDate: formData.transactionDate ? new Date(formData.transactionDate) : new Date()
+            };
+
+            const result = await authFetch(`transactions/${txId}`, {
+                method: 'PUT',
+                body: updateData
+            });
+
+            if (result && result.success) {
+                toast.success('Cập nhật giao dịch thành công!');
+                onTxUpdated();
+                onClose();
+            } else {
+                throw new Error(result?.message || 'Lỗi khi cập nhật giao dịch.');
+            }
+        } catch (error) {
+            toast.error('Lỗi khi cập nhật giao dịch: ' + error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     if (!isOpen || !txId) return null;
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-                <h2 className="text-xl font-bold text-indigo-700 border-b pb-3 mb-4">Sửa Giao Dịch ID: {txId}</h2>
-                 <p className="text-gray-600 mb-4">Đây là form mẫu. Vui lòng thêm logic xử lý form ở đây.</p>
-                <div className="flex justify-end space-x-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Hủy</button>
-                    <button onClick={() => { onClose(); onTxUpdated(); toast.success("Giao dịch cập nhật thành công (Demo)!"); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu</button>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                    <h2 className="text-2xl font-bold text-indigo-700 border-b pb-4 mb-6">Sửa Giao Dịch</h2>
+                    
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <span className="ml-3 text-gray-600">Đang tải...</span>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Loại giao dịch */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Loại giao dịch *</label>
+                                    <select
+                                        name="type"
+                                        value={formData.type}
+                                        onChange={handleInputChange}
+                                        className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                        required
+                                    >
+                                        <option value="revenue">Thu vào</option>
+                                        <option value="expense">Chi ra</option>
+                                    </select>
+                                </div>
+
+                                {/* Danh mục */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Danh mục *</label>
+                                    <select
+                                        name="category"
+                                        value={formData.category}
+                                        onChange={handleInputChange}
+                                        className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                        required
+                                    >
+                                        <option value="">Chọn danh mục</option>
+                                        <optgroup label="Thu nhập">
+                                            <option value="development_fee">Phí phát triển</option>
+                                            <option value="testing_fee">Phí thử nghiệm</option>
+                                            <option value="revenue_share">Chia sẻ doanh thu</option>
+                                            <option value="support_fee">Phí hỗ trợ</option>
+                                            <option value="user_payment">Thanh toán từ user</option>
+                                            <option value="other_income">Thu nhập khác</option>
+                                        </optgroup>
+                                        <optgroup label="Chi phí">
+                                            <option value="server_cost">Chi phí server</option>
+                                            <option value="marketing">Marketing</option>
+                                            <option value="app_development">Phát triển app</option>
+                                            <option value="app_testing">Thử nghiệm app</option>
+                                            <option value="other_expense">Chi phí khác</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                {/* Số tiền */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VND) *</label>
+                                    <input
+                                        type="number"
+                                        name="amount"
+                                        value={formData.amount}
+                                        onChange={handleInputChange}
+                                        placeholder="Nhập số tiền"
+                                        min="0"
+                                        step="1000"
+                                        className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Ngày giao dịch */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Ngày giao dịch *</label>
+                                    <input
+                                        type="date"
+                                        name="transactionDate"
+                                        value={formData.transactionDate}
+                                        onChange={handleInputChange}
+                                        className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Trạng thái */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleInputChange}
+                                        className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                                    >
+                                        <option value="pending">Chờ xử lý</option>
+                                        <option value="completed">Hoàn thành</option>
+                                        <option value="cancelled">Đã hủy</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Mô tả */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả *</label>
+                                <textarea
+                                    name="description"
+                                    value={formData.description}
+                                    onChange={handleInputChange}
+                                    placeholder="Mô tả chi tiết về giao dịch"
+                                    rows="3"
+                                    maxLength="500"
+                                    className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition resize-none"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">{formData.description.length}/500 ký tự</p>
+                            </div>
+
+                            {/* Ghi chú */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú</label>
+                                <textarea
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleInputChange}
+                                    placeholder="Ghi chú thêm (không bắt buộc)"
+                                    rows="3"
+                                    maxLength="1000"
+                                    className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition resize-none"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">{formData.notes.length}/1000 ký tự</p>
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex justify-end space-x-3 pt-4 border-t">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+                                    disabled={isLoading}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>
@@ -308,7 +560,7 @@ const TransactionDashboard = () => {
             if (result && result.success) {
                 const fetchedTxs = result.data || [];
                 setTransactions(fetchedTxs);
-                setSummary(calculateTransactionSummary(fetchedTxs));
+                setSummary(calculateTransactionSummary(fetchedTxs, result.total || fetchedTxs.length));
                 setTotal(result.total || fetchedTxs.length);
                 setTotalPages(result.totalPages || Math.ceil(fetchedTxs.length / limit) || 1);
             } else {

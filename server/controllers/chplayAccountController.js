@@ -17,6 +17,24 @@ exports.getCHPlayAccounts = async (req, res) => {
 };
 
 /**
+ * @desc    Get single CHPlay account by id
+ * @route   GET /api/chplay-accounts/:id
+ * @access  Private (authenticated users)
+ */
+exports.getCHPlayAccount = async (req, res) => {
+    try {
+        const account = await CHPlayAccount.findById(req.params.id);
+        if (!account) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản CHPlay.' });
+        }
+        res.status(200).json({ success: true, data: account });
+    } catch (error) {
+        console.error('Lỗi khi lấy tài khoản CHPlay:', error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
+    }
+};
+
+/**
  * @desc    Admin: Tạo mới một CHPlay Account
  * @route   POST /api/chplay-accounts
  * @access  Private/Admin

@@ -24,7 +24,7 @@ const EditAppModal = ({ isOpen, onClose, onAppUpdated, appId }) => {
         notes: '',
         costDevelopment: 0, 
         costTesting: 0,
-        status: 'draft',
+        status: 'requested',
         iapIds: ['', '', '', '', ''] // Ít nhất 5 IAP ID
     });
     const [chplayAccounts, setChplayAccounts] = useState([]);
@@ -44,7 +44,7 @@ const EditAppModal = ({ isOpen, onClose, onAppUpdated, appId }) => {
             const [appRes, chplayRes, clientRes] = await Promise.all([
                 authFetch(`applications/${appId}`, { method: 'GET' }),
                 authFetch('chplay-accounts', { method: 'GET' }),
-                authFetch('users?role=user', { method: 'GET' })
+                authFetch('users/all', { method: 'GET' })
             ]);
 
             if (appRes?.success) {
@@ -253,12 +253,12 @@ const EditAppModal = ({ isOpen, onClose, onAppUpdated, appId }) => {
                                     disabled={isLoading}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
                                 >
-                                    <option value="draft">Draft (Bản nháp)</option>
+                                    <option value="requested">Requested (Yêu cầu)</option>
+                                    <option value="in_progress">In Progress (Đang thực hiện)</option>
                                     <option value="testing">Testing (Đang thử nghiệm)</option>
-                                    <option value="waiting_for_review">Waiting for Review (Chờ duyệt)</option>
+                                    <option value="pending_review">Pending Review (Chờ duyệt)</option>
                                     <option value="approved">Approved (Đã duyệt)</option>
-                                    <option value="suspended">Suspended (Tạm dừng)</option>
-                                    <option value="finished">Finished (Hoàn thành)</option>
+                                    <option value="transferred">Transferred (Đã chuyển)</option>
                                 </select>
                             </div>
                         </div>

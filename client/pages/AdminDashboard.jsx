@@ -10,12 +10,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
     faMobileAlt, faCode, faDollarSign, faArrowTrendUp, faArrowTrendDown,
     faSearch, faFilter, faSyncAlt, faPlus, faChevronLeft, faChevronRight,
-    faPencilAlt, faTrashAlt, faBoxOpen, faCopy, faCheck
+    faPencilAlt, faTrashAlt, faBoxOpen, faCopy, faCheck, faEye
 } from '@fortawesome/free-solid-svg-icons';
 
 // --- COMPONENTS & STYLES ---
 import CreateAppModal from './CreateAppModal';
 import EditAppModal from './EditAppModal';
+import AppDetailModal from '../components/AppDetailModal';
 import LoadingSpinner from '../components/Loading';
 import '../src/styles/datepicker.css'; // Import CSS cho Datepicker
 
@@ -24,19 +25,24 @@ import { formatCurrency } from '../utils/currency';
 const calculateSummary = (apps) => {
     const totalApp = apps.length;
     let testingCount = 0;
-    let waitingForReviewCount = 0;
+    let pendingReviewCount = 0;
     let approvedCount = 0;
+    let inProgressCount = 0;
     
     apps.forEach(app => {
         switch (app.status) {
             case 'testing':
                 testingCount++;
                 break;
-            case 'waiting_for_review':
-                waitingForReviewCount++;
+            case 'pending_review':
+                pendingReviewCount++;
                 break;
             case 'approved':
+            case 'transferred':
                 approvedCount++;
+                break;
+            case 'in_progress':
+                inProgressCount++;
                 break;
             default:
                 break;
@@ -46,8 +52,9 @@ const calculateSummary = (apps) => {
     return { 
         totalApp, 
         testingCount,
-        waitingForReviewCount,
-        approvedCount
+        pendingReviewCount,
+        approvedCount,
+        inProgressCount
     };
 };
 
@@ -88,11 +95,12 @@ const DashboardToolbar = ({ searchQuery, setSearchQuery, statusFilter, setStatus
                     className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 >
                     <option value="all">Tất cả trạng thái</option>
-                    <option value="draft">Nháp</option>
-                    <option value="pending">Chờ duyệt</option>
+                    <option value="requested">Yêu cầu</option>
+                    <option value="in_progress">Đang thực hiện</option>
+                    <option value="testing">Đang thử nghiệm</option>
+                    <option value="pending_review">Chờ duyệt</option>
                     <option value="approved">Đã duyệt</option>
-                    <option value="testing">Đang test</option>
-                    <option value="live">Đang chạy</option>
+                    <option value="transferred">Đã duyệt (đã chuyển)</option>
                 </select>
                 <div className="flex items-center gap-2">
                     <DatePicker
@@ -186,6 +194,7 @@ const Pagination = ({ page, totalPages, setPage }) => {
 };
 
 // --- COMPONENT CHÍNH ---
+
 const AdminDashboard = () => {
     const { user } = useAuth();
     const authFetch = useApi();
@@ -196,6 +205,8 @@ const AdminDashboard = () => {
     const [isCreateAppModalOpen, setIsCreateAppModalOpen] = useState(false);
     const [isEditAppModalOpen, setIsEditAppModalOpen] = useState(false);
     const [editingAppId, setEditingAppId] = useState(null);
+    const [selectedApp, setSelectedApp] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
     
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -259,12 +270,19 @@ const AdminDashboard = () => {
         setIsEditAppModalOpen(true);
     };
 
+    const handleViewDetail = (app) => {
+        console.log('handleViewDetail called with app:', app);
+        console.log('Setting selectedApp and showDetailModal to true');
+        setSelectedApp(app);
+        setShowDetailModal(true);
+    };
+
     const handleAppUpdated = () => {
         fetchData(); // Refresh data after update
     };
     
     const filteredApplications = applications.filter((app) => 
-        `${app.name || ''} ${app.appId || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        `${app.name || ''} ${app.appServerId || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) &&
         (statusFilter === 'all' ? true : app.status === statusFilter)
     );
     
@@ -296,9 +314,9 @@ const AdminDashboard = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                         <StatCard title="Tổng Ứng dụng" value={total} icon={faMobileAlt} color={{bg: 'bg-blue-100', text: 'text-blue-600'}} />
-                        <StatCard title="Đang Thử Nghiệm" value={summary.testingCount} icon={faCode} color={{bg: 'bg-yellow-100', text: 'text-yellow-600'}} />
-                        <StatCard title="Chờ Duyệt" value={summary.waitingForReviewCount} icon={faDollarSign} color={{bg: 'bg-orange-100', text: 'text-orange-600'}} />
-                        <StatCard title="Đã Duyệt" value={summary.approvedCount} icon={faArrowTrendUp} color={{bg: 'bg-green-100', text: 'text-green-600'}} />
+                        <StatCard title="Đang thực hiện" value={summary.inProgressCount} icon={faCode} color={{bg: 'bg-indigo-100', text: 'text-indigo-600'}} />
+                        <StatCard title="Chờ duyệt" value={summary.pendingReviewCount} icon={faFilter} color={{bg: 'bg-orange-100', text: 'text-orange-600'}} />
+                        <StatCard title="Đã duyệt" value={summary.approvedCount} icon={faCheck} color={{bg: 'bg-green-100', text: 'text-green-600'}} />
                     </div>
                     
                     <DashboardToolbar 
@@ -310,7 +328,7 @@ const AdminDashboard = () => {
                         onApplyFilter={handleApplyFilter}
                     />
 
-                    <ApplicationTable applications={filteredApplications} isAdmin={true} onDelete={handleDelete} onEdit={handleEdit} />
+                    <ApplicationTable applications={filteredApplications} isAdmin={true} onDelete={handleDelete} onEdit={handleEdit} onViewDetail={handleViewDetail} />
                     
                     {totalPages > 1 && <Pagination page={page} totalPages={totalPages} setPage={setPage} />}
                 </main>
@@ -326,22 +344,31 @@ const AdminDashboard = () => {
                 onAppUpdated={handleAppUpdated}
                 appId={editingAppId}
             />
+
+            <AppDetailModal
+                isOpen={showDetailModal}
+                onClose={() => {
+                    setShowDetailModal(false);
+                    setSelectedApp(null);
+                }}
+                app={selectedApp}
+            />
         </>
     );
 };
 
 
 // --- COMPONENT BẢNG ---
-const ApplicationTable = ({ applications, isAdmin, onDelete, onEdit }) => {
+const ApplicationTable = ({ applications, isAdmin, onDelete, onEdit, onViewDetail }) => {
     // ... logic bảng giữ nguyên, chỉ thay đổi icon ...
     const StatusBadge = ({ status }) => {
         const statusStyles = {
-            draft: "bg-gray-100 text-gray-800",
-            testing: "bg-yellow-100 text-yellow-800", 
-            waiting_for_review: "bg-blue-100 text-blue-800",
-            approved: "bg-green-100 text-green-800",
-            suspended: "bg-red-100 text-red-800",
-            finished: "bg-teal-100 text-teal-800",
+            requested: "bg-gray-100 text-gray-800",       // Yêu cầu
+            in_progress: "bg-blue-100 text-blue-800",     // Đang thực hiện
+            testing: "bg-yellow-100 text-yellow-800",     // Đang thử nghiệm
+            pending_review: "bg-indigo-100 text-indigo-800", // Chờ duyệt
+            approved: "bg-green-100 text-green-800",      // Đã duyệt
+            transferred: "bg-teal-100 text-teal-800",     // Đã duyệt (đã chuyển)
             default: "bg-gray-100 text-gray-800"
         };
         return (
@@ -548,35 +575,19 @@ const ApplicationTable = ({ applications, isAdmin, onDelete, onEdit }) => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <TableHeader>Tên App</TableHeader>
-                                <TableHeader>App ID</TableHeader>
-                                <TableHeader>Trạng thái</TableHeader>
-                                <TableHeader>IAP IDs</TableHeader>
-                                <TableHeader className="text-right">Chi phí PT</TableHeader>
-                                <TableHeader className="text-right">Chi phí TT</TableHeader>
-                                <TableHeader>Client</TableHeader>
-                                <TableHeader>CHPlay Account</TableHeader>
-                                {isAdmin && <TableHeader className="text-center">Hành động</TableHeader>}
+                                <TableHeader className="min-w-[120px]">Server ID</TableHeader>
+                                <TableHeader className="min-w-[200px]">Tên App</TableHeader>
+                                <TableHeader className="min-w-[120px]">Trạng thái</TableHeader>
+                                <TableHeader className="min-w-[150px]">CHPlay Account</TableHeader>
+                                <TableHeader className="min-w-[120px] text-center">Thao tác</TableHeader>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {applications.map((app) => (
                                 <tr key={app._id} className="hover:bg-gray-50 transition">
+                                    <TableData className="font-mono text-gray-600">{app.appServerId || 'N/A'}</TableData>
                                     <TableData className="font-semibold text-indigo-600">{app.name}</TableData>
-                                    <TableData className="font-mono text-gray-600">{app.appId}</TableData>
                                     <TableData><StatusBadge status={app.status} /></TableData>
-                                    <TableData>
-                                        <IapIdsDisplay iapIds={app.iapIds} />
-                                    </TableData>
-                                    <TableData className="text-right font-medium">{formatCurrency(app.costDevelopment)}</TableData>
-                                    <TableData className="text-right font-medium">{formatCurrency(app.costTesting)}</TableData>
-                                    <TableData>
-                                        <ClientTooltip client={app.client}>
-                                            <span className="text-indigo-600 hover:text-indigo-800 font-medium">
-                                                {app.client?.name || app.client?._id || 'N/A'}
-                                            </span>
-                                        </ClientTooltip>
-                                    </TableData>
                                     <TableData>
                                         <AccountTooltip account={app.chplayAccount}>
                                             <span className="text-blue-600 hover:text-blue-800 font-medium">
@@ -584,18 +595,35 @@ const ApplicationTable = ({ applications, isAdmin, onDelete, onEdit }) => {
                                             </span>
                                         </AccountTooltip>
                                     </TableData>
-                                    {isAdmin && (
-                                        <TableData className="text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => onEdit(app._id)} className="text-indigo-600 hover:text-indigo-800 transition text-base w-8 h-8 flex items-center justify-center rounded-md hover:bg-indigo-100" title="Sửa ứng dụng">
-                                                    <FontAwesomeIcon icon={faPencilAlt} />
-                                                </button>
-                                                <button onClick={() => onDelete(app._id)} className="text-red-500 hover:text-red-700 transition text-base w-8 h-8 flex items-center justify-center rounded-md hover:bg-red-100" title="Xóa ứng dụng">
-                                                    <FontAwesomeIcon icon={faTrashAlt} />
-                                                </button>
-                                            </div>
-                                        </TableData>
-                                    )}
+                                    <TableData className="text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button 
+                                                onClick={() => onViewDetail(app)} 
+                                                className="text-indigo-600 hover:text-indigo-800 transition text-base w-8 h-8 flex items-center justify-center rounded-md hover:bg-indigo-100" 
+                                                title="Xem chi tiết"
+                                            >
+                                                <FontAwesomeIcon icon={faEye} />
+                                            </button>
+                                            {isAdmin && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => onEdit(app._id)} 
+                                                        className="text-indigo-600 hover:text-indigo-800 transition text-base w-8 h-8 flex items-center justify-center rounded-md hover:bg-indigo-100" 
+                                                        title="Sửa ứng dụng"
+                                                    >
+                                                        <FontAwesomeIcon icon={faPencilAlt} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => onDelete(app._id)} 
+                                                        className="text-red-500 hover:text-red-700 transition text-base w-8 h-8 flex items-center justify-center rounded-md hover:bg-red-100" 
+                                                        title="Xóa ứng dụng"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrashAlt} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </TableData>
                                 </tr>
                             ))}
                         </tbody>

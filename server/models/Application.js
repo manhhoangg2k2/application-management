@@ -1,7 +1,19 @@
 // server/models/Application.js
 const mongoose = require('mongoose');
 
+// Counter schema for auto-incrementing APP ID
+const counterSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    seq: { type: Number, default: 0 }
+});
+
+const Counter = mongoose.model('Counter', counterSchema);
+
 const ApplicationSchema = new mongoose.Schema({
+    appServerId: {
+        type: String,
+        unique: true
+    },
     name: {
         type: String,
         required: [true, 'Vui lòng nhập tên Ứng dụng.'],
@@ -20,8 +32,15 @@ const ApplicationSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['draft', 'testing', 'waiting_for_review', 'approved', 'suspended', 'finished'],
-        default: 'draft'
+        enum: [
+            'requested',      // Yêu cầu
+            'in_progress',    // Đang thực hiện
+            'testing',        // Đang thử nghiệm
+            'pending_review', // Chờ duyệt
+            'approved',       // Đã duyệt
+            'transferred'     // Đã duyệt (đã chuyển)
+        ],
+        default: 'requested'
     },
     description: {
         type: String,
@@ -58,6 +77,10 @@ const ApplicationSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    linkApp: {
+        type: String,
+        required: false
+    },
     client: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -70,6 +93,23 @@ const ApplicationSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+});
+
+// Pre-save middleware to generate appServerId
+ApplicationSchema.pre('save', async function(next) {
+    if (this.isNew) {
+        try {
+            const counter = await Counter.findByIdAndUpdate(
+                'appServerId',
+                { $inc: { seq: 1 } },
+                { new: true, upsert: true }
+            );
+            this.appServerId = 'APP' + counter.seq.toString().padStart(4, '0');
+        } catch (error) {
+            return next(error);
+        }
+    }
+    next();
 });
 
 module.exports = mongoose.model('Application', ApplicationSchema);

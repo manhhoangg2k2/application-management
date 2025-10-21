@@ -8,7 +8,7 @@ exports.getSingleApplication = async (req, res) => {
     try {
         const app = await Application.findById(req.params.id)
             .populate('client', 'name username contactInfo')
-            .populate('chplayAccount', 'name username type');
+            .populate('chplayAccount', 'name type');
 
         if (!app) {
             return res.status(404).json({ success: false, message: `Không tìm thấy ứng dụng với ID: ${req.params.id}` });
@@ -71,7 +71,7 @@ exports.getApplications = async (req, res) => {
         const total = await Application.countDocuments(query);
         const applications = await Application.find(query)
             .populate('client', 'name username contactInfo') // Lấy tên khách hàng
-            .populate('chplayAccount', 'name username type') // Lấy tên tài khoản CHPlay
+            .populate('chplayAccount', 'name type') // Lấy tên tài khoản CHPlay
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
@@ -150,7 +150,7 @@ exports.updateApplication = async (req, res) => {
             runValidators: true 
         })
         .populate('client', 'name username contactInfo')
-        .populate('chplayAccount', 'name username type');
+        .populate('chplayAccount', 'name type');
 
         if (!app) {
             return res.status(404).json({ success: false, message: `Không tìm thấy ứng dụng với ID: ${req.params.id}` });

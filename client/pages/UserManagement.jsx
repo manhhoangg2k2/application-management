@@ -36,8 +36,8 @@ const ICON_MAP = {
 
 import { formatCurrency } from '../utils/currency';
 
-const calculateUserSummary = (users) => {
-    const totalUsers = users.length;
+const calculateUserSummary = (users, totalCount = 0) => {
+    const totalUsers = totalCount; // Sử dụng tổng số từ API
     const adminCount = users.filter(u => u.role === 'admin').length;
     const clientCount = users.filter(u => u.role === 'user').length;
     const activeCount = users.filter(u => u.isActive).length;
@@ -315,7 +315,7 @@ const UserManagement = () => {
             if (result && result.success) {
                 const fetchedUsers = result.data || [];
                 setUsers(fetchedUsers);
-                setSummary(calculateUserSummary(fetchedUsers));
+                setSummary(calculateUserSummary(fetchedUsers, result.total || fetchedUsers.length));
                 setTotal(result.total || fetchedUsers.length);
                 setTotalPages(result.totalPages || Math.ceil(fetchedUsers.length / limit) || 1);
             } else {

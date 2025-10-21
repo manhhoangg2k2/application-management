@@ -33,6 +33,11 @@ exports.getTransactions = async (req, res) => {
             query = query.where('transactionDate').lte(new Date(req.query.toDate));
         }
 
+        // Type filter
+        if (req.query.type && req.query.type !== 'all') {
+            query = query.where('type').equals(req.query.type);
+        }
+
         // Execute query with pagination
         const transactions = await query
             .sort({ transactionDate: -1 })
@@ -49,8 +54,8 @@ exports.getTransactions = async (req, res) => {
                 const processedTransaction = transaction.toObject();
                 // Đảo ngược type để hiển thị đúng cho User
                 if (processedTransaction.type === 'expense') {
-                    processedTransaction.type = 'revenue'; // Admin chi -> User thu
-                } else if (processedTransaction.type === 'revenue') {
+                    processedTransaction.type = 'income'; // Admin chi -> User thu
+                } else if (processedTransaction.type === 'income') {
                     processedTransaction.type = 'expense'; // Admin thu -> User chi
                 }
                 return processedTransaction;
@@ -93,8 +98,8 @@ exports.getTransaction = async (req, res) => {
         let processedTransaction = transaction.toObject();
         if (req.user.role === 'user') {
             if (processedTransaction.type === 'expense') {
-                processedTransaction.type = 'revenue'; // Admin chi -> User thu
-            } else if (processedTransaction.type === 'revenue') {
+                processedTransaction.type = 'income'; // Admin chi -> User thu
+            } else if (processedTransaction.type === 'income') {
                 processedTransaction.type = 'expense'; // Admin thu -> User chi
             }
         }
@@ -136,13 +141,13 @@ exports.createTransaction = async (req, res) => {
             transactionData.userId = req.user.id;
             
             // Logic ngược: User thu = Admin chi, User chi = Admin thu
-            if (transactionData.type === 'revenue') {
+            if (transactionData.type === 'income') {
                 // User thu -> Admin chi tiền cho User
                 transactionData.type = 'expense';
                 transactionData.category = 'user_income';
             } else if (transactionData.type === 'expense') {
                 // User chi -> Admin thu tiền từ User
-                transactionData.type = 'revenue';
+                transactionData.type = 'income';
                 transactionData.category = 'user_payment';
             }
             
@@ -155,7 +160,7 @@ exports.createTransaction = async (req, res) => {
             
             // Set default category if not provided
             if (!transactionData.category) {
-                if (transactionData.type === 'revenue') {
+                if (transactionData.type === 'income') {
                     transactionData.category = 'other_income';
                 } else {
                     transactionData.category = 'other_expense';
@@ -187,18 +192,43 @@ exports.createTransaction = async (req, res) => {
  */
 exports.updateTransaction = async (req, res) => {
     try {
-        // Chỉ Admin mới có quyền cập nhật giao dịch
-        if (req.user.role !== 'admin') {
-             return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này.' });
+        // Tìm giao dịch trước
+        const existingTransaction = await Transaction.findById(req.params.id);
+        
+        if (!existingTransaction) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch để cập nhật.' });
+        }
+
+        // Kiểm tra quyền: Admin có thể sửa tất cả, User chỉ sửa giao dịch của họ
+        if (req.user.role !== 'admin' && existingTransaction.userId.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa giao dịch này.' });
+        }
+
+        // Xử lý dữ liệu cập nhật
+        let updateData = { ...req.body };
+        
+        // Nếu là User, xử lý logic ngược
+        if (req.user.role === 'user') {
+            if (updateData.type === 'income') {
+                // User thu -> Admin chi tiền cho User
+                updateData.type = 'expense';
+                updateData.category = 'user_income';
+            } else if (updateData.type === 'expense') {
+                // User chi -> Admin thu tiền từ User
+                updateData.type = 'income';
+                updateData.category = 'user_payment';
+            }
         }
         
-        const transaction = await Transaction.findByIdAndUpdate(req.params.id, req.body, {
+        const transaction = await Transaction.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true,
         });
 
-        if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch để cập nhật.' });
+        // Populate để trả về thông tin đầy đủ
+        await transaction.populate('userId', 'name username');
+        if (transaction.applicationId) {
+            await transaction.populate('applicationId', 'name appId');
         }
 
         res.status(200).json({ success: true, data: transaction });
@@ -271,7 +301,7 @@ exports.getTransactionStatistics = async (req, res) => {
         };
 
         transactions.forEach(transaction => {
-            if (transaction.type === 'revenue') {
+            if (transaction.type === 'income') {
                 statistics.totalRevenue += transaction.amount;
             } else if (transaction.type === 'expense') {
                 statistics.totalExpense += transaction.amount;
