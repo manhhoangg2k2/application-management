@@ -106,7 +106,7 @@ const LoginForm = ({ setIsLoading, setMessage, isLoading, API_URL, login }) => {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <InputField id="login-username" label="Tên Đăng Nhập" type="text" value={username} onChange={setUsername} placeholder="Nhập tên đăng nhập" disabled={isLoading}/>
+            <InputField id="login-username" label="Tên Đăng Nhập Test 1" type="text" value={username} onChange={setUsername} placeholder="Nhập tên đăng nhập" disabled={isLoading}/>
             <InputField id="login-password" label="Mật Khẩu" type="password" value={password} onChange={setPassword} placeholder="Nhập mật khẩu" disabled={isLoading}/>
             <SubmitButton isLoading={isLoading}>{isLoading ? 'Đang Đăng Nhập...' : 'Đăng Nhập'}</SubmitButton>
         </form>
