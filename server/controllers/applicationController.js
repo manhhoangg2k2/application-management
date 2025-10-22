@@ -99,8 +99,13 @@ exports.getApplications = async (req, res) => {
  */
 exports.createApplication = async (req, res) => {
     try {
-        if (!req.body.name || !req.body.appId || !req.body.client || !req.body.chplayAccount) {
-            return res.status(400).json({ success: false, message: 'Thiếu các trường bắt buộc (Tên App, ID App, Client ID, CHPlay Account ID).' });
+        if (!req.body.name || !req.body.appId || !req.body.client || !req.body.chplayAccount || !req.body.updateDate) {
+            return res.status(400).json({ success: false, message: 'Thiếu các trường bắt buộc (Tên App, ID App, Client ID, CHPlay Account ID, Ngày Up).' });
+        }
+
+        // Kiểm tra ngày up nếu có
+        if (req.body.updateDate) {
+            req.body.dateUploaded = new Date(req.body.updateDate);
         }
 
         // Kiểm tra IAP IDs nếu có
@@ -136,6 +141,11 @@ exports.createApplication = async (req, res) => {
  */
 exports.updateApplication = async (req, res) => {
     try {
+        // Kiểm tra ngày up nếu có
+        if (req.body.updateDate) {
+            req.body.dateUploaded = new Date(req.body.updateDate);
+        }
+
         // Kiểm tra IAP IDs nếu có trong request
         if (req.body.iapIds && req.body.iapIds.length > 0) {
             const validIapIds = req.body.iapIds.filter(id => id && id.trim() !== '');

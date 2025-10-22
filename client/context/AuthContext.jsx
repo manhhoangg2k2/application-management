@@ -13,7 +13,7 @@ export const useAuth = () => {
 };
 
 const AuthProvider = ({ children }) => {
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8400/api';
+  const API_URL = import.meta.env.VITE_API_BASE_URL || '';
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true); 

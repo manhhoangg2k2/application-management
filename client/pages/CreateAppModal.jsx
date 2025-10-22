@@ -25,6 +25,7 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
         costDevelopment: 0, 
         costTesting: 0,
         status: 'requested',
+        updateDate: '', // Ngày up ứng dụng
         iapIds: ['', '', '', '', ''] // Ít nhất 5 IAP ID
     });
     const [chplayAccounts, setChplayAccounts] = useState([]);
@@ -92,6 +93,7 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
                 costDevelopment: 0, 
                 costTesting: 0,
                 status: 'requested',
+                updateDate: '',
                 iapIds: ['', '', '', '', '']
             });
         }
@@ -134,6 +136,12 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isLoading || !selectedAccount || !selectedClient) return;
+
+        // Kiểm tra ngày up
+        if (!formData.updateDate) {
+            toast.error("Vui lòng chọn ngày up ứng dụng");
+            return;
+        }
 
         // Kiểm tra IAP IDs (ít nhất 5 IAP ID không rỗng)
         const validIapIds = formData.iapIds.filter(id => id.trim() !== '');
@@ -260,6 +268,22 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
                                 </select>
                             </div>
                         )}
+
+                        {/* 5. Chọn ngày up ứng dụng */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Ngày Up Ứng Dụng <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                name="updateDate"
+                                value={formData.updateDate}
+                                onChange={handleChange}
+                                required
+                                disabled={isLoading}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                            />
+                        </div>
                     </div>
 
                     <TextAreaField label="Mô tả Ứng dụng" name="description" value={formData.description} onChange={handleChange} placeholder="Mô tả ngắn gọn về chức năng của ứng dụng..."/>
