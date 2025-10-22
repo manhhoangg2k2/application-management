@@ -31,7 +31,7 @@ jobs:
       
       # Bước 4 (QUAN TRỌNG): Sao chép Frontend đã build đến thư mục của IIS
       - name: Copy Frontend to IIS Directory
-        shell: pwsh # Chỉ định dùng PowerShell
+        shell: powershell # Chỉ định dùng PowerShell
         run: |
           robocopy client\dist "C:\Users\Administrator\Documents\application-management\client\dist" /E /PURGE
           if ($LASTEXITCODE -lt 8) { exit 0 } else { exit $LASTEXITCODE }
