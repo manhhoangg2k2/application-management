@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Dịch vụ backend
+  backend:
+    build:
+      context: ./backend  # Đường dẫn đến thư mục chứa Dockerfile của backend
+    container_name: nodejs_backend
+    ports:
+      - "8400:8400" # Ánh xạ cổng 5000 của máy host vào cổng 5000 của container
+    environment:
+      - NODE_ENV=production
+    networks:
+      - my-app-network
+
+  # Dịch vụ frontend
+  frontend:
+    build:
+      context: ./frontend # Đường dẫn đến thư mục chứa Dockerfile của frontend
+    container_name: react_frontend
+    ports:
+      - "3000:80" # Ánh xạ cổng 3000 của máy host vào cổng 80 của container Nginx
+    depends_on:
+      - backend # Khởi chạy sau khi backend đã khởi chạy
+    networks:
+      - my-app-network
+
+networks:
+  my-app-network:
+    driver: bridge
