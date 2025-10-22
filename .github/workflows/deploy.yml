@@ -34,7 +34,7 @@ jobs:
       # Bước 4: Cài đặt dependencies và khởi động lại Backend
       - name: Deploy Backend
         run: |
-          cd backend
+          cd server
           npm install
-          pm2 reload your-backend-app-name --update-env
+          pm2 reload app-manager-api --update-env
         working-directory: ${{ github.workspace }}
