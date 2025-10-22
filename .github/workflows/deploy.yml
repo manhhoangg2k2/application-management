@@ -1,0 +1,40 @@
+name: Deploy to Windows Server
+
+# Kích hoạt workflow này mỗi khi có code được đẩy lên nhánh `main`
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    # Chạy job này trên runner bạn vừa cài trên server
+    runs-on: self-hosted
+
+    steps:
+      # Bước 1: Lấy mã nguồn mới nhất từ GitHub về server
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Bước 2: Cài đặt môi trường Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Hoặc phiên bản Node.js bạn đang dùng
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      # Bước 3: Build dự án Frontend
+      - name: Build Frontend
+        run: |
+          cd client
+          npm install
+          npm run build
+        working-directory: ${{ github.workspace }}
+
+      # Bước 4: Cài đặt dependencies và khởi động lại Backend
+      - name: Deploy Backend
+        run: |
+          cd backend
+          npm install
+          pm2 reload your-backend-app-name --update-env
+        working-directory: ${{ github.workspace }}
