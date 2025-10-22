@@ -30,10 +30,30 @@ jobs:
           npm run build
       
       # Bước 4 (QUAN TRỌNG): Sao chép Frontend đã build đến thư mục của IIS
-      - name: Copy Frontend to IIS Directory
-        shell: powershell # Chỉ định dùng PowerShell
+      - name: Build and Deploy Frontend
+        shell: powershell
         run: |
-          robocopy client\dist "C:\Users\Administrator\Documents\application-management\client\dist" /E /PURGE
+          # Di chuyển vào đúng thư mục client
+          cd client
+          
+          # Cài đặt và Build
+          Write-Host "Starting npm install and build..."
+          npm install
+          npm run build
+          
+          # BƯỚC THÊM VÀO: Copy web.config vào thư mục dist vừa build xong
+          Write-Host "Copying web.config to dist folder..."
+          copy-item .\web.config -Destination .\dist\
+          
+          # KIỂM TRA AN TOÀN: Dừng lại nếu build thất bại hoặc thư mục dist rỗng
+          if (-not (Test-Path .\dist -PathType Container) -or -not (Get-ChildItem -Path .\dist)) {
+            Write-Error "Build failed or dist directory is empty! Aborting copy."
+            exit 1
+          }
+          
+          # Chỉ sao chép nếu build thành công
+          Write-Host "Build successful. Copying files to IIS directory..."
+          robocopy .\dist "C:\Users\Administrator\Documents\application-management\client\dist" /E /PURGE
           if ($LASTEXITCODE -lt 8) { exit 0 } else { exit $LASTEXITCODE }
 
       # Bước 5: Deploy Backend
