@@ -15,11 +15,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Bước 2: Cài đặt môi trường Node.js
-      - name: Setup Node.js
+      - name: Setup Node.js v20
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Hoặc phiên bản Node.js bạn đang dùng
+          node-version: '20' # <-- SỬA LẠI PHIÊN BẢN NODE.JS
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
@@ -29,12 +28,18 @@ jobs:
           cd client
           npm install
           npm run build
-        working-directory: ${{ github.workspace }}
-
-      # Bước 4: Cài đặt dependencies và khởi động lại Backend
-      - name: Deploy Backend
+      
+      # Bước 4 (QUAN TRỌNG): Sao chép Frontend đã build đến thư mục của IIS
+      - name: Copy Frontend to IIS Directory
         run: |
+          robocopy client\dist "C:\Users\Administrator\Documents\application-management\client\dist" /E /PURGE
+
+      # Bước 5: Deploy Backend
+      - name: Deploy server
+        run: |
+          robocopy backend "C:\Users\Administrator\Documents\application-management\server" /E /PURGE
+
+          # Cài đặt và reload
           cd server
           npm install
-          pm2 reload app-manager-api --update-env
-        working-directory: ${{ github.workspace }}
+          pm2 reload app-manager-api --update-env 
