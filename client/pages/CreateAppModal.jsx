@@ -13,10 +13,8 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
     const { user, API_URL } = useAuth();
     const authFetch = useApi();
     
-    // Kiểm tra vai trò của người dùng hiện tại
     const isAdmin = user?.role === 'admin';
 
-    // Trạng thái Form
     const [formData, setFormData] = useState({
         name: '',
         appId: '',
