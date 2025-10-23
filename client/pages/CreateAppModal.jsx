@@ -166,7 +166,38 @@ const CreateAppModal = ({ isOpen, onClose, onAppCreated }) => {
             });
 
             if (result && result.success) {
-                toast.success(`Ứng dụng "${finalData.name}" đã được tạo thành công!`);
+                // Nếu có chi phí test, tạo giao dịch chi phí test
+                if (finalData.costTesting > 0) {
+                    try {
+                        const transactionData = {
+                            type: 'expense',
+                            category: 'testing_fee',
+                            amount: finalData.costTesting,
+                            description: `Chi phí test app: ${finalData.name}`,
+                            transactionDate: new Date(),
+                            status: 'completed',
+                            notes: `Chi phí test cho ứng dụng ${finalData.name} (${finalData.appId})`,
+                            applicationId: result.data._id // ID của app vừa tạo
+                        };
+
+                        const transactionResult = await authFetch('transactions', {
+                            method: 'POST',
+                            body: JSON.stringify(transactionData)
+                        });
+
+                        if (transactionResult && transactionResult.success) {
+                            toast.success(`Ứng dụng "${finalData.name}" đã được tạo thành công! Giao dịch chi phí test đã được tạo.`);
+                        } else {
+                            toast.success(`Ứng dụng "${finalData.name}" đã được tạo thành công! (Lưu ý: Không thể tạo giao dịch chi phí test)`);
+                        }
+                    } catch (transactionError) {
+                        console.error('Error creating testing transaction:', transactionError);
+                        toast.success(`Ứng dụng "${finalData.name}" đã được tạo thành công! (Lưu ý: Không thể tạo giao dịch chi phí test)`);
+                    }
+                } else {
+                    toast.success(`Ứng dụng "${finalData.name}" đã được tạo thành công!`);
+                }
+                
                 onAppCreated(); 
                 onClose();
             } else {

@@ -18,10 +18,10 @@ import LoadingSpinner from '../components/Loading'; // Tái sử dụng
 
 // MAPPING ICON SANG UNICODE HOẶC KÝ HIỆU TEXT
 const ICON_MAP = {
-    invoice: '🧾', // faFileInvoiceDollar
-    inflow: '➕💰', // faPiggyBank or faArrowTrendUp
-    outflow: '➖💳', // faCreditCard or faArrowTrendDown
-    balance: '📊', // faMoneyBillWave
+    invoice: '📋', // Tổng số giao dịch - danh sách
+    inflow: '📈', // Thu vào - biểu đồ tăng
+    outflow: '📉', // Chi ra - biểu đồ giảm
+    balance: '⚖️', // Số dư ròng - cân bằng
     search: '🔍', // faSearch
     filter: '⚙️', // faFilter
     refresh: '🔄', // faSyncAlt
@@ -40,11 +40,30 @@ const calculateTransactionSummary = (transactions, totalCount = 0) => {
     let totalInflow = 0;
     let totalOutflow = 0;
     
+    // Đảm bảo transactions là array
+    if (!Array.isArray(transactions)) {
+        return { totalTx: 0, totalInflow: 0, totalOutflow: 0, netBalance: 0 };
+    }
+    
     transactions.forEach(tx => {
+        // Kiểm tra tx có tồn tại và có amount không
+        if (!tx || typeof tx.amount === 'undefined' || tx.amount === null) {
+            return;
+        }
+        
+        // Chuyển đổi amount thành số
+        const amount = Number(tx.amount);
+        
+        // Kiểm tra amount có hợp lệ không
+        if (isNaN(amount) || amount < 0) {
+            return;
+        }
+        
+        // Tính tổng theo type
         if (tx.type === 'income') {
-            totalInflow += (tx.amount || 0);
+            totalInflow += amount;
         } else if (tx.type === 'expense') {
-            totalOutflow += (tx.amount || 0);
+            totalOutflow += amount;
         }
     });
     
@@ -253,15 +272,292 @@ const TransactionTable = ({ transactions, onDelete, onEdit }) => {
 
 // --- MODAL SKELETONS ---
 const CreateTransactionModal = ({ isOpen, onClose, onTxCreated }) => {
+    const { user } = useAuth();
+    const authFetch = useApi();
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const [applications, setApplications] = useState([]);
+    const [formData, setFormData] = useState({
+        type: 'income',
+        category: '',
+        amount: '',
+        description: '',
+        transactionDate: new Date(),
+        status: 'completed',
+        notes: '',
+        applicationId: ''
+    });
+
+    // Fetch applications when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchApplications();
+        }
+    }, [isOpen]);
+
+    const fetchApplications = async () => {
+        try {
+            const result = await authFetch('applications', { method: 'GET' });
+            if (result && result.success) {
+                setApplications(result.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching applications:', error);
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleDateChange = (date) => {
+        setFormData(prev => ({
+            ...prev,
+            transactionDate: date
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!formData.category || !formData.amount || !formData.description) {
+            toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const submitData = {
+                ...formData,
+                amount: parseFloat(formData.amount),
+                applicationId: formData.applicationId || null
+            };
+
+            const result = await authFetch('transactions', {
+                method: 'POST',
+                body: JSON.stringify(submitData)
+            });
+
+            if (result && result.success) {
+                toast.success('Tạo giao dịch thành công!');
+                onTxCreated();
+                onClose();
+                // Reset form
+                setFormData({
+                    type: 'income',
+                    category: '',
+                    amount: '',
+                    description: '',
+                    transactionDate: new Date(),
+                    status: 'completed',
+                    notes: '',
+                    applicationId: ''
+                });
+            } else {
+                toast.error(result?.message || 'Có lỗi xảy ra khi tạo giao dịch');
+            }
+        } catch (error) {
+            console.error('Error creating transaction:', error);
+            toast.error('Có lỗi xảy ra khi tạo giao dịch');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     if (!isOpen) return null;
+
+    const categoryOptions = {
+        income: [
+            { value: 'revenue_share', label: 'Chia sẻ doanh thu' },
+            { value: 'user_payment', label: 'Thanh toán từ khách hàng' },
+            { value: 'other_income', label: 'Thu nhập khác' }
+        ],
+        expense: [
+            { value: 'development_fee', label: 'Phí phát triển' },
+            { value: 'testing_fee', label: 'Phí thử nghiệm' },
+            { value: 'server_cost', label: 'Chi phí server' },
+            { value: 'marketing', label: 'Marketing' },
+            { value: 'support_fee', label: 'Phí hỗ trợ' },
+            { value: 'other_expense', label: 'Chi phí khác' }
+        ]
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-                <h2 className="text-xl font-bold text-indigo-700 border-b pb-3 mb-4">Tạo Giao Dịch Mới</h2>
-                <p className="text-gray-600 mb-4">Đây là form mẫu. Vui lòng thêm logic xử lý form ở đây.</p>
-                <div className="flex justify-end space-x-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Hủy</button>
-                    <button onClick={() => { onClose(); onTxCreated(); toast.success("Giao dịch tạo thành công (Demo)!"); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Tạo</button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[600px] flex flex-col">
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-indigo-700">Tạo Giao Dịch Mới</h2>
+                    <button 
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Type Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Loại giao dịch</label>
+                            <div className="flex space-x-4">
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="type"
+                                        value="income"
+                                        checked={formData.type === 'income'}
+                                        onChange={handleInputChange}
+                                        className="mr-2"
+                                    />
+                                    <span className="text-green-600 font-medium">💰 Thu nhập</span>
+                                </label>
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        name="type"
+                                        value="expense"
+                                        checked={formData.type === 'expense'}
+                                        onChange={handleInputChange}
+                                        className="mr-2"
+                                    />
+                                    <span className="text-red-600 font-medium">💸 Chi phí</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Category */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Danh mục *</label>
+                            <select
+                                name="category"
+                                value={formData.category}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                            >
+                                <option value="">Chọn danh mục</option>
+                                {categoryOptions[formData.type].map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Amount */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền (VNĐ) *</label>
+                            <input
+                                type="number"
+                                name="amount"
+                                value={formData.amount}
+                                onChange={handleInputChange}
+                                placeholder="Nhập số tiền"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                                min="0"
+                                step="1000"
+                            />
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả *</label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleInputChange}
+                                placeholder="Mô tả giao dịch"
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                                maxLength={500}
+                            />
+                        </div>
+
+                        {/* Application */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Ứng dụng liên quan</label>
+                            <select
+                                name="applicationId"
+                                value={formData.applicationId}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="">Không liên quan đến ứng dụng</option>
+                                {applications.map(app => (
+                                    <option key={app._id} value={app._id}>
+                                        {app.name} ({app.appId})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Transaction Date */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Ngày giao dịch</label>
+                            <DatePicker
+                                selected={formData.transactionDate}
+                                onChange={handleDateChange}
+                                dateFormat="dd/MM/yyyy"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+
+                        {/* Status */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                            <select
+                                name="status"
+                                value={formData.status}
+                                onChange={handleInputChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="completed">✅ Hoàn thành</option>
+                                <option value="pending">⏳ Đang xử lý</option>
+                                <option value="cancelled">❌ Đã hủy</option>
+                            </select>
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú</label>
+                            <textarea
+                                name="notes"
+                                value={formData.notes}
+                                onChange={handleInputChange}
+                                placeholder="Ghi chú thêm (tùy chọn)"
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                maxLength={1000}
+                            />
+                        </div>
+                    </form>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end space-x-3 p-4 border-t border-gray-200 bg-gray-50">
+                    <button 
+                        onClick={onClose} 
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                        disabled={isLoading}
+                    >
+                        Hủy
+                    </button>
+                    <button 
+                        onClick={handleSubmit}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang tạo...' : 'Tạo giao dịch'}
+                    </button>
                 </div>
             </div>
         </div>

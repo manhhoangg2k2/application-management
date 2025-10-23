@@ -12,8 +12,29 @@ import toast from 'react-hot-toast';
 const AppDetailModal = ({ app, isOpen, onClose }) => {
     const [copiedIndex, setCopiedIndex] = useState(null);
     const [showAllIapIds, setShowAllIapIds] = useState(false);
+    const [activeTab, setActiveTab] = useState('basic');
 
     console.log('AppDetailModal rendered with props:', { app, isOpen, onClose });
+
+    // Handle ESC key to close modal
+    React.useEffect(() => {
+        const handleEscKey = (event) => {
+            if (event.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleEscKey);
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleEscKey);
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen || !app) {
         console.log('AppDetailModal not rendering because:', { isOpen, app: !!app });
@@ -102,12 +123,27 @@ const AppDetailModal = ({ app, isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-[99999] flex items-center justify-center p-2 sm:p-4" 
+            style={{ 
+                position: 'fixed', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0,
+                zIndex: 99999
+            }}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                    onClose();
+                }
+            }}
+        >
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[600px] flex flex-col relative transform">
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div className="flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white z-10 shadow-sm">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Chi tiết ứng dụng</h2>
+                        <h2 className="text-xl font-bold text-gray-900">Chi tiết ứng dụng</h2>
                         <p className="text-sm text-gray-500 mt-1">ID: {app.appServerId}</p>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -121,164 +157,305 @@ const AppDetailModal = ({ app, isOpen, onClose }) => {
                     </div>
                 </div>
 
+                {/* Tabs Navigation */}
+                <div className="border-b border-gray-200 bg-gray-50">
+                    <nav className="flex space-x-1 px-4">
+                        {[
+                            { id: 'basic', name: 'Thông tin cơ bản' },
+                            { id: 'details', name: 'Chi tiết' },
+                            { id: 'costs', name: 'Chi phí' },
+                            { id: 'notes', name: 'Ghi chú' }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-lg ${
+                                    activeTab === tab.id
+                                        ? 'border-indigo-500 text-indigo-600 bg-white'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                                }`}
+                            >
+                                {tab.name}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
                 {/* Content */}
-                <div className="p-6 space-y-6">
-                    {/* Basic Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên ứng dụng</label>
-                                <p className="text-lg font-semibold text-gray-900">{app.name}</p>
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Package ID</label>
-                                <p className="text-sm font-mono bg-gray-50 px-3 py-2 rounded-lg">{app.appId}</p>
+                <div className="h-[400px] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    {/* Tab 1: Basic Information */}
+                    {activeTab === 'basic' && (
+                        <div className="space-y-6">
+                            {/* App Information Section */}
+                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                    Thông tin Ứng dụng
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Tên ứng dụng</label>
+                                            <p className="text-base font-semibold text-gray-900 bg-gray-50 p-3 rounded-lg">{app.name}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Package ID</label>
+                                            <p className="text-sm font-mono bg-gray-100 px-3 py-2 rounded-lg border">{app.appId}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                                            <div className="flex items-center">
+                                                <StatusBadge status={app.status} />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Ngày tạo</label>
+                                            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-lg">
+                                                {new Date(app.createdAt).toLocaleDateString('vi-VN', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Khách hàng</label>
-                                <p className="text-sm text-gray-900">
-                                    {app.client?.name || 'N/A'} 
-                                    {app.client?.username && (
-                                        <span className="text-gray-500 ml-2">({app.client.username})</span>
-                                    )}
-                                </p>
+                            {/* Client & Account Information Section */}
+                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                    Thông tin Khách hàng & Tài khoản
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Khách hàng</label>
+                                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                                            {app.client?.name || 'N/A'} 
+                                            {app.client?.username && (
+                                                <span className="text-gray-500 ml-2">({app.client.username})</span>
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Tài khoản CHPlay</label>
+                                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                                            {app.chplayAccount?.name || 'N/A'}
+                                            {app.chplayAccount?.type && (
+                                                <span className="text-gray-500 ml-2">({app.chplayAccount.type})</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tài khoản CHPlay</label>
-                                <p className="text-sm text-gray-900">
-                                    {app.chplayAccount?.name || 'N/A'}
-                                    {app.chplayAccount?.type && (
-                                        <span className="text-gray-500 ml-2">({app.chplayAccount.type})</span>
-                                    )}
-                                </p>
-                            </div>
+                            {/* Additional Information Section */}
+                            {(app.dateUploaded || app.linkApp) && (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                                        Thông tin Bổ sung
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {app.dateUploaded && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày upload</label>
+                                                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-lg">
+                                                    {new Date(app.dateUploaded).toLocaleDateString('vi-VN', {
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {app.linkApp && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Link ứng dụng</label>
+                                                <a 
+                                                    href={app.linkApp} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:text-blue-800 text-sm underline bg-blue-50 p-2 rounded-lg block"
+                                                >
+                                                    {app.linkApp}
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    )}
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-                                <StatusBadge status={app.status} />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày tạo</label>
-                                <p className="text-sm text-gray-900">
-                                    {new Date(app.createdAt).toLocaleDateString('vi-VN', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </p>
-                            </div>
-
-                            {app.dateUploaded && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày upload</label>
-                                    <p className="text-sm text-gray-900">
-                                        {new Date(app.dateUploaded).toLocaleDateString('vi-VN', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
-                                    </p>
+                    {/* Tab 2: Details */}
+                    {activeTab === 'details' && (
+                        <div className="space-y-6">
+                            {/* Description Section */}
+                            {app.description && (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <div className="w-2 h-2 bg-indigo-500 rounded-full mr-2"></div>
+                                        Mô tả Ứng dụng
+                                    </h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg border">
+                                        <p className="text-sm text-gray-900 leading-relaxed">
+                                            {app.description}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
-                            {app.linkApp && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Link ứng dụng</label>
-                                    <a 
-                                        href={app.linkApp} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:text-blue-800 text-sm underline"
-                                    >
-                                        {app.linkApp}
-                                    </a>
+                            {/* IAP IDs Section */}
+                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                                    IAP IDs (In-App Purchase)
+                                </h3>
+                                <IapIdsDisplay iapIds={app.iapIds} />
+                            </div>
+
+                            {/* Asset Links Section */}
+                            {app.assetLinks && Object.keys(app.assetLinks).length > 0 && (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <div className="w-2 h-2 bg-teal-500 rounded-full mr-2"></div>
+                                        Asset Links
+                                    </h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg border">
+                                        <pre className="text-sm text-gray-900 whitespace-pre-wrap font-mono">
+                                            {JSON.stringify(app.assetLinks, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Empty state for details */}
+                            {!app.description && (!app.iapIds || app.iapIds.length === 0) && (!app.assetLinks || Object.keys(app.assetLinks).length === 0) && (
+                                <div className="text-center py-12 text-gray-500">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-lg font-medium">Chưa có thông tin chi tiết</p>
+                                    <p className="text-sm">Thông tin chi tiết sẽ được hiển thị ở đây khi có dữ liệu</p>
                                 </div>
                             )}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Description */}
-                    {app.description && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
-                            <p className="text-sm text-gray-900 bg-gray-50 p-4 rounded-lg">
-                                {app.description}
-                            </p>
+                    {/* Tab 3: Costs */}
+                    {activeTab === 'costs' && (
+                        <div className="space-y-6">
+                            {(app.costDevelopment > 0 || app.costTesting > 0 || app.costOther > 0) ? (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
+                                        Thông tin Chi phí
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {app.costDevelopment > 0 && (
+                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                                <div className="flex items-center mb-2">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                                    <label className="text-sm font-medium text-gray-700">Chi phí Phát triển</label>
+                                                </div>
+                                                <p className="text-xl font-bold text-blue-700">
+                                                    {formatCurrency(app.costDevelopment)}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {app.costTesting > 0 && (
+                                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                                <div className="flex items-center mb-2">
+                                                    <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                                                    <label className="text-sm font-medium text-gray-700">Chi phí Thử nghiệm</label>
+                                                </div>
+                                                <p className="text-xl font-bold text-yellow-700">
+                                                    {formatCurrency(app.costTesting)}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {app.costOther > 0 && (
+                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                                <div className="flex items-center mb-2">
+                                                    <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                                                    <label className="text-sm font-medium text-gray-700">Chi phí Khác</label>
+                                                </div>
+                                                <p className="text-xl font-bold text-purple-700">
+                                                    {formatCurrency(app.costOther)}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Total Cost */}
+                                    <div className="mt-6 pt-4 border-t border-gray-200">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-lg font-semibold text-gray-900">Tổng chi phí:</span>
+                                            <span className="text-2xl font-bold text-gray-900">
+                                                {formatCurrency((app.costDevelopment || 0) + (app.costTesting || 0) + (app.costOther || 0))}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-lg font-medium">Chưa có thông tin chi phí</p>
+                                    <p className="text-sm">Thông tin chi phí sẽ được hiển thị ở đây khi có dữ liệu</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* IAP IDs */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">IAP IDs (In-App Purchase)</label>
-                        <IapIdsDisplay iapIds={app.iapIds} />
-                    </div>
-
-                    {/* Cost Information (Admin only) */}
-                    {(app.costDevelopment > 0 || app.costTesting > 0 || app.costOther > 0) && (
-                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                            <h4 className="font-bold text-indigo-700 mb-3">Thông tin Chi phí</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {app.costDevelopment > 0 && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí Phát triển</label>
-                                        <p className="text-lg font-semibold text-gray-900">
-                                            {formatCurrency(app.costDevelopment)}
+                    {/* Tab 4: Notes */}
+                    {activeTab === 'notes' && (
+                        <div className="space-y-6">
+                            {app.notes ? (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                        <div className="w-2 h-2 bg-amber-500 rounded-full mr-2"></div>
+                                        Ghi chú
+                                    </h3>
+                                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                        <p className="text-sm text-gray-900 leading-relaxed">
+                                            {app.notes}
                                         </p>
                                     </div>
-                                )}
-                                {app.costTesting > 0 && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí Thử nghiệm</label>
-                                        <p className="text-lg font-semibold text-gray-900">
-                                            {formatCurrency(app.costTesting)}
-                                        </p>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
                                     </div>
-                                )}
-                                {app.costOther > 0 && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí Khác</label>
-                                        <p className="text-lg font-semibold text-gray-900">
-                                            {formatCurrency(app.costOther)}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Notes */}
-                    {app.notes && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú</label>
-                            <p className="text-sm text-gray-900 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                {app.notes}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Asset Links */}
-                    {app.assetLinks && Object.keys(app.assetLinks).length > 0 && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Asset Links</label>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <pre className="text-sm text-gray-900 whitespace-pre-wrap">
-                                    {JSON.stringify(app.assetLinks, null, 2)}
-                                </pre>
-                            </div>
+                                    <p className="text-lg font-medium">Chưa có ghi chú</p>
+                                    <p className="text-sm">Ghi chú sẽ được hiển thị ở đây khi có dữ liệu</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-end p-4 border-t border-gray-200 bg-gray-50 sticky bottom-0 shadow-sm">
                     <button
                         onClick={onClose}
                         className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition"
