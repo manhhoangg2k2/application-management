@@ -571,7 +571,7 @@ const EditTransactionModal = ({ isOpen, onClose, onTxUpdated, txId }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [transaction, setTransaction] = useState(null);
     const [formData, setFormData] = useState({
-        type: 'revenue',
+        type: 'income',
         category: '',
         amount: '',
         description: '',
@@ -683,7 +683,7 @@ const EditTransactionModal = ({ isOpen, onClose, onTxUpdated, txId }) => {
                                         className="w-full py-2.5 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                                         required
                                     >
-                                        <option value="revenue">Thu vào</option>
+                                        <option value="income">Thu vào</option>
                                         <option value="expense">Chi ra</option>
                                     </select>
                                 </div>

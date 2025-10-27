@@ -133,8 +133,8 @@ exports.getUserTransactions = async (req, res) => {
             const processedTransaction = transaction.toObject();
             // Đảo ngược type để hiển thị đúng cho User
             if (processedTransaction.type === 'expense') {
-                processedTransaction.type = 'revenue'; // Admin chi -> User thu
-            } else if (processedTransaction.type === 'revenue') {
+                processedTransaction.type = 'income'; // Admin chi -> User thu
+            } else if (processedTransaction.type === 'income') {
                 processedTransaction.type = 'expense'; // Admin thu -> User chi
             }
             return processedTransaction;
@@ -191,7 +191,7 @@ exports.createUserTransaction = async (req, res) => {
             transactionData.category = 'user_income';
         } else if (transactionData.type === 'expense') {
             // User chi -> Admin thu tiền từ User
-            transactionData.type = 'revenue';
+            transactionData.type = 'income';
             transactionData.category = 'user_payment';
         }
 
@@ -254,7 +254,7 @@ exports.getUserTransactionStatistics = async (req, res) => {
             if (transaction.type === 'expense') {
                 // Admin chi = User thu (app revenue)
                 statistics.totalAppRevenue += transaction.amount;
-            } else if (transaction.type === 'revenue') {
+            } else if (transaction.type === 'income') {
                 // Admin thu = User chi (expense)
                 statistics.totalExpense += transaction.amount;
             }

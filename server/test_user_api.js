@@ -15,7 +15,7 @@ const testUser = {
 };
 
 const testTransaction = {
-    type: 'revenue',
+    type: 'income',
     amount: 1000000,
     description: 'Test transaction from user'
 };

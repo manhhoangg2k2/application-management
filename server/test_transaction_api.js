@@ -33,7 +33,7 @@ async function testCreateTransaction() {
         console.log('\n💰 Testing tạo giao dịch...');
         
         const transactionData = {
-            type: 'revenue',
+            type: 'income',
             amount: 1000000,
             description: 'Test transaction from API'
         };
@@ -115,7 +115,7 @@ async function testValidation() {
         // Test với amount = 0
         try {
             await axios.post(`${BASE_URL}/users/transactions`, {
-                type: 'revenue',
+                type: 'income',
                 amount: 0,
                 description: 'Test with amount 0'
             }, {
@@ -136,7 +136,7 @@ async function testValidation() {
         // Test với description rỗng
         try {
             await axios.post(`${BASE_URL}/users/transactions`, {
-                type: 'revenue',
+                type: 'income',
                 amount: 1000000,
                 description: ''
             }, {

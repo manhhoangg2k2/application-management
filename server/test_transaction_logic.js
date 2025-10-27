@@ -51,9 +51,9 @@ async function testUserCreateTransaction() {
     try {
         console.log('\n💰 Testing User tạo giao dịch...');
         
-        // User tạo giao dịch "Thu" (revenue)
+        // User tạo giao dịch "Thu" (income)
         const userRevenueTransaction = {
-            type: 'revenue',
+            type: 'income',
             amount: 1000000,
             description: 'User thu tiền từ app'
         };
@@ -63,7 +63,7 @@ async function testUserCreateTransaction() {
         });
         
         console.log('✅ User tạo giao dịch "Thu":', {
-            userInput: 'revenue',
+            userInput: 'income',
             savedInDB: response1.data.data.type,
             category: response1.data.data.category
         });
@@ -193,11 +193,11 @@ async function testLogicConsistency() {
         if (userTransactions.length > 0 && adminTransactions.length > 0) {
             console.log('  Logic ngược hoạt động đúng:');
             console.log('    User thu -> Admin chi:', 
-                userTransactions.some(t => t.type === 'revenue') && 
+                userTransactions.some(t => t.type === 'income') && 
                 adminTransactions.some(t => t.type === 'expense'));
             console.log('    User chi -> Admin thu:', 
                 userTransactions.some(t => t.type === 'expense') && 
-                adminTransactions.some(t => t.type === 'revenue'));
+                adminTransactions.some(t => t.type === 'income'));
         }
         
     } catch (error) {

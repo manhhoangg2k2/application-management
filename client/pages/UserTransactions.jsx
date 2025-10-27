@@ -72,7 +72,7 @@ const UserTransactions = () => {
         transactions.forEach(transaction => {
             if (transaction.type === 'expense') {
                 totalExpense += transaction.amount;
-            } else if (transaction.type === 'revenue') {
+            } else if (transaction.type === 'income') {
                 totalAppRevenue += transaction.amount;
             }
         });
@@ -142,7 +142,7 @@ const UserTransactions = () => {
                                 className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                             >
                                 <FontAwesomeIcon icon={faPlus} className="mr-2" />
-                                Thêm giao dịch
+                                Nạp tiền cho Admin
                             </button>
                         </div>
                     </div>
@@ -210,7 +210,7 @@ const UserTransactions = () => {
                                 {transactions.length === 0 ? 'Chưa có giao dịch nào' : 'Không tìm thấy giao dịch phù hợp'}
                             </h3>
                             <p className="text-gray-500">
-                                {transactions.length === 0 ? 'Bắt đầu bằng cách thêm giao dịch đầu tiên.' : 'Hãy thử thay đổi bộ lọc để tìm kiếm.'}
+                                {transactions.length === 0 ? 'Bắt đầu bằng cách nạp tiền cho admin.' : 'Hãy thử thay đổi bộ lọc để tìm kiếm.'}
                             </p>
                         </div>
                     ) : (
@@ -253,14 +253,12 @@ const UserTransactions = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <div className="flex justify-center space-x-2">
-                                                    <button
-                                                        className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                                                        title="Xem chi tiết"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEye} />
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                                    title="Xem chi tiết giao dịch"
+                                                >
+                                                    <FontAwesomeIcon icon={faEye} />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -309,12 +307,12 @@ const StatCard = ({ title, value, unit, color, icon }) => (
 const TypeBadge = ({ type }) => {
     const typeStyles = {
         expense: "bg-red-100 text-red-800",
-        revenue: "bg-green-100 text-green-800"
+        income: "bg-green-100 text-green-800"
     };
     
     const typeLabels = {
         expense: "Chi",
-        revenue: "Thu"
+        income: "Thu"
     };
 
     return (
@@ -324,11 +322,10 @@ const TypeBadge = ({ type }) => {
     );
 };
 
-// Modal tạo giao dịch mới
+// Modal tạo giao dịch nạp tiền cho admin
 const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
     const authFetch = useApi();
     const [formData, setFormData] = useState({
-        type: 'expense',
         amount: '',
         description: ''
     });
@@ -342,13 +339,14 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
             const result = await authFetch('users/transactions', {
                 method: 'POST',
                 body: JSON.stringify({
-                    ...formData,
-                    amount: parseFloat(formData.amount)
+                    type: 'expense', // Mặc định là chi phí (nạp tiền cho admin)
+                    amount: parseFloat(formData.amount),
+                    description: formData.description
                 })
             });
 
             if (result && result.success) {
-                toast.success('Tạo giao dịch thành công!');
+                toast.success('Tạo giao dịch nạp tiền thành công!');
                 onTransactionCreated();
             } else {
                 toast.error(result?.message || 'Có lỗi xảy ra khi tạo giao dịch.');
@@ -374,7 +372,7 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
                 <div className="mt-3">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-gray-900">Thêm giao dịch mới</h3>
+                        <h3 className="text-lg font-medium text-gray-900">Nạp tiền cho Admin</h3>
                         <button
                             onClick={onClose}
                             className="text-gray-400 hover:text-gray-600"
@@ -385,27 +383,27 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
                         </button>
                     </div>
 
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <p className="text-sm text-blue-700">
+                                    Giao dịch này sẽ được ghi nhận là chi phí nạp tiền cho admin. Các thông tin khác sẽ được thiết lập mặc định.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Loại giao dịch
-                            </label>
-                            <select
-                                name="type"
-                                value={formData.type}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                required
-                            >
-                                <option value="expense">Chi (Chi phí)</option>
-                                <option value="revenue">Thu (Thu nhập từ app)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Số tiền (VND)
+                                Số tiền nạp (VND)
                             </label>
                             <input
                                 type="number"
@@ -413,7 +411,7 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
                                 value={formData.amount}
                                 onChange={handleInputChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                placeholder="Nhập số tiền"
+                                placeholder="Nhập số tiền nạp"
                                 min="0"
                                 step="1000"
                                 required
@@ -422,14 +420,14 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Mô tả
+                                Nội dung nạp tiền
                             </label>
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleInputChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                placeholder="Mô tả giao dịch"
+                                placeholder="Mô tả nội dung nạp tiền"
                                 rows="3"
                                 required
                             />
@@ -449,7 +447,7 @@ const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
                                 disabled={isSubmitting}
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
                             >
-                                {isSubmitting ? 'Đang tạo...' : 'Tạo giao dịch'}
+                                {isSubmitting ? 'Đang tạo...' : 'Tạo giao dịch nạp tiền'}
                             </button>
                         </div>
                     </form>
@@ -489,7 +487,7 @@ const FilterSection = ({
                         className="w-full py-2 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                     >
                         <option value="all">Tất cả</option>
-                        <option value="revenue">Thu</option>
+                        <option value="income">Thu</option>
                         <option value="expense">Chi</option>
                     </select>
                 </div>
