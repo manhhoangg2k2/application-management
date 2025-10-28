@@ -60,6 +60,77 @@ const TransactionSchema = new mongoose.Schema({
         type: String,
         trim: true,
         maxlength: 1000,
+    },
+    // Thông tin SePay webhook
+    sepayData: {
+        // ID giao dịch trên SePay
+        sepayId: {
+            type: Number,
+            default: null
+        },
+        // Brand name của ngân hàng
+        gateway: {
+            type: String,
+            default: null
+        },
+        // Thời gian xảy ra giao dịch phía ngân hàng
+        bankTransactionDate: {
+            type: Date,
+            default: null
+        },
+        // Số tài khoản ngân hàng
+        accountNumber: {
+            type: String,
+            default: null
+        },
+        // Mã code thanh toán
+        paymentCode: {
+            type: String,
+            default: null
+        },
+        // Nội dung chuyển khoản
+        transferContent: {
+            type: String,
+            default: null
+        },
+        // Loại giao dịch (in/out)
+        transferType: {
+            type: String,
+            enum: ['in', 'out'],
+            default: null
+        },
+        // Số tiền giao dịch từ SePay
+        transferAmount: {
+            type: Number,
+            default: null
+        },
+        // Số dư tài khoản (lũy kế)
+        accumulated: {
+            type: Number,
+            default: null
+        },
+        // Tài khoản ngân hàng phụ
+        subAccount: {
+            type: String,
+            default: null
+        },
+        // Mã tham chiếu của tin nhắn sms
+        referenceCode: {
+            type: String,
+            default: null
+        },
+        // Toàn bộ nội dung tin nhắn sms
+        smsDescription: {
+            type: String,
+            default: null
+        }
+    },
+    // Mã xác thực để match với SePay webhook
+    verificationCode: {
+        type: String,
+        unique: true,
+        sparse: true, // Cho phép null và unique chỉ áp dụng khi có giá trị
+        default: null
     }
 }, {
     timestamps: true // Thêm createdAt và updatedAt

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faEye, faSyncAlt, faFilter, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { formatCurrency } from '../utils/currency';
+import CreateTransactionModal from '../components/CreateTransactionModal';
 
 const formatDate = (date) => {
     return new Date(date).toLocaleDateString('vi-VN', {
@@ -279,12 +280,11 @@ const UserTransactions = () => {
             </div>
 
             {/* Create Transaction Modal */}
-            {showCreateModal && (
-                <CreateTransactionModal
-                    onClose={() => setShowCreateModal(false)}
-                    onTransactionCreated={handleTransactionCreated}
-                />
-            )}
+            <CreateTransactionModal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onTransactionCreated={handleTransactionCreated}
+            />
         </div>
     );
 };
@@ -319,141 +319,6 @@ const TypeBadge = ({ type }) => {
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeStyles[type] || typeStyles.expense}`}>
             {typeLabels[type] || 'Chi'}
         </span>
-    );
-};
-
-// Modal tạo giao dịch nạp tiền cho admin
-const CreateTransactionModal = ({ onClose, onTransactionCreated }) => {
-    const authFetch = useApi();
-    const [formData, setFormData] = useState({
-        amount: '',
-        description: ''
-    });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
-        try {
-            const result = await authFetch('users/transactions', {
-                method: 'POST',
-                body: JSON.stringify({
-                    type: 'expense', // Mặc định là chi phí (nạp tiền cho admin)
-                    amount: parseFloat(formData.amount),
-                    description: formData.description
-                })
-            });
-
-            if (result && result.success) {
-                toast.success('Tạo giao dịch nạp tiền thành công!');
-                onTransactionCreated();
-            } else {
-                toast.error(result?.message || 'Có lỗi xảy ra khi tạo giao dịch.');
-            }
-        } catch (error) {
-            toast.error(error.message || 'Có lỗi xảy ra khi tạo giao dịch.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-                <div className="mt-3">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-gray-900">Nạp tiền cho Admin</h3>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {/* Info Box */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm text-blue-700">
-                                    Giao dịch này sẽ được ghi nhận là chi phí nạp tiền cho admin. Các thông tin khác sẽ được thiết lập mặc định.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Số tiền nạp (VND)
-                            </label>
-                            <input
-                                type="number"
-                                name="amount"
-                                value={formData.amount}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                placeholder="Nhập số tiền nạp"
-                                min="0"
-                                step="1000"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Nội dung nạp tiền
-                            </label>
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                placeholder="Mô tả nội dung nạp tiền"
-                                rows="3"
-                                required
-                            />
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex justify-end space-x-3 pt-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                            >
-                                {isSubmitting ? 'Đang tạo...' : 'Tạo giao dịch nạp tiền'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
     );
 };
 
