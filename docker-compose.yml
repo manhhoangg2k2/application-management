@@ -13,7 +13,7 @@ services:
     networks:
       - my-app-network
 
-  # Dịch vụ frontend
+  # Dịch vụ fronten
   frontend:
     build:
       context: ./frontend # Đường dẫn đến thư mục chứa Dockerfile của frontend
